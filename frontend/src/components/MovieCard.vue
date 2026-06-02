@@ -117,7 +117,7 @@ function onImgError(e) {
   color: #fff;
   padding: 2px 10px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 1px;
 }
@@ -130,7 +130,7 @@ function onImgError(e) {
   color: #f5a623;
   padding: 2px 8px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -160,7 +160,7 @@ function onImgError(e) {
 }
 
 .duration {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
@@ -170,15 +170,15 @@ function onImgError(e) {
 }
 
 .price-symbol {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .price-value {
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .price-unit {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   font-weight: 400;
 }

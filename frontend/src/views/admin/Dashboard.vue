@@ -158,26 +158,35 @@ function formatDateTime(dateStr) {
 
 async function fetchData() {
   try {
-    const [orderRes, movieRes] = await Promise.all([
+    const [orderResult, movieResult] = await Promise.allSettled([
       getAdminOrders(),
       getMovieList()
     ])
-    const allOrders = orderRes.data?.records || orderRes.data || []
-    recentOrders.value = allOrders.slice(0, 10)
 
-    // Count today's orders
-    const today = new Date()
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-    const todayOrdersList = allOrders.filter(o => {
-      const createDate = (o.createTime || o.createdAt || '').substring(0, 10)
-      return createDate === todayStr
-    })
-    todayOrders.value = todayOrdersList.length
-    todayRevenue.value = todayOrdersList.reduce((sum, o) => sum + (Number(o.totalAmount || o.totalPrice) || 0), 0).toFixed(2)
-    const movieList = movieRes.data?.records || movieRes.data || []
-    activeMovies.value = movieList.filter(m => m.status === 1).length
+    // 单独处理订单数据
+    if (orderResult.status === 'fulfilled') {
+      const allOrders = orderResult.value.data?.records || orderResult.value.data || []
+      recentOrders.value = allOrders.slice(0, 10)
+
+      // Calculate today's stats
+      const today = new Date()
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+      const todayOrdersList = allOrders.filter(o => {
+        const createDate = (o.createTime || o.createdAt || '').substring(0, 10)
+        return createDate === todayStr
+      })
+      todayOrders.value = todayOrdersList.length
+      const revenue = todayOrdersList.reduce((sum, o) => sum + (Number(o.totalAmount || o.totalPrice) || 0), 0)
+      todayRevenue.value = isNaN(revenue) ? '0.00' : revenue.toFixed(2)
+    }
+
+    // 单独处理电影数据
+    if (movieResult.status === 'fulfilled') {
+      const movieList = movieResult.value.data?.records || movieResult.value.data || []
+      activeMovies.value = movieList.filter(m => m.status === 1).length
+    }
   } catch (err) {
-    // fallback
+    // unexpected fallback
   }
   loadingOrders.value = false
 }
@@ -249,8 +258,8 @@ onMounted(fetchData)
 }
 
 .stat-mini-label {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* Stats row */

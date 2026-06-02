@@ -51,14 +51,14 @@ public class StatisticsServiceImpl implements StatisticsService {
         LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
         wrapper.in(Order::getStatus, 1, 2); // 已支付和已完成的订单
 
-        // 如果有时间范围限制，添加支付时间条件
+        // 如果有时间范围限制，添加支付时间条件（营收应按支付时间统计）
         if (startDate != null) {
-            wrapper.ge(Order::getCreateTime, startDate.atStartOfDay());
+            wrapper.ge(Order::getPayTime, startDate.atStartOfDay());
         }
         if (endDate != null) {
-            wrapper.le(Order::getCreateTime, endDate.plusDays(1).atStartOfDay());
+            wrapper.le(Order::getPayTime, endDate.plusDays(1).atStartOfDay());
         }
-        wrapper.orderByDesc(Order::getCreateTime);
+        wrapper.orderByDesc(Order::getPayTime);
 
         List<Order> orders = orderMapper.selectList(wrapper);
 
@@ -154,6 +154,62 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         log.info("影片排行榜查询: 共{}部影片", ranking.size());
         return ranking;
+    }
+
+    /**
+     * 获取每日营收数据（用于前端趋势图）
+     * 按支付时间(日期级别)分组统计，按日期升序排列
+     *
+     * @param startDate 开始日期
+     * @param endDate   结束日期
+     * @return 每日数据列表
+     */
+    @Override
+    public List<Map<String, Object>> getDailyRevenue(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null) startDate = LocalDate.now().minusDays(30);
+        if (endDate == null) endDate = LocalDate.now();
+
+        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(Order::getStatus, 1, 2);
+        wrapper.ge(Order::getPayTime, startDate.atStartOfDay());
+        wrapper.le(Order::getPayTime, endDate.plusDays(1).atStartOfDay());
+
+        List<Order> orders = orderMapper.selectList(wrapper);
+
+        // 按日期分组
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        Map<String, List<Order>> grouped = orders.stream()
+            .filter(o -> o.getPayTime() != null)
+            .collect(Collectors.groupingBy(
+                o -> o.getPayTime().format(dateFormatter),
+                LinkedHashMap::new,
+                Collectors.toList()));
+
+        // 构建完整的日期范围（包括没有订单的日期）
+        List<Map<String, Object>> dailyData = new ArrayList<>();
+        long days = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        for (int i = 0; i < days; i++) {
+            LocalDate date = startDate.plusDays(i);
+            String dateKey = date.format(dateFormatter);
+            List<Order> dayOrders = grouped.getOrDefault(dateKey, List.of());
+
+            BigDecimal dayRevenue = BigDecimal.ZERO;
+            int dayOrderCount = dayOrders.size();
+            for (Order o : dayOrders) {
+                if (o.getTotalPrice() != null) {
+                    dayRevenue = dayRevenue.add(o.getTotalPrice());
+                }
+            }
+
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("date", dateKey);
+            item.put("revenue", dayRevenue);
+            item.put("orderCount", dayOrderCount);
+            dailyData.add(item);
+        }
+
+        log.info("每日营收统计: {} ~ {} -> {} 天", startDate, endDate, dailyData.size());
+        return dailyData;
     }
 
     /**

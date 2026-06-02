@@ -137,9 +137,9 @@ router.beforeEach((to, from, next) => {
     return next({ name: 'Home' })
   }
 
-  // Super admin only check - only for routes without requiresAdmin flag
-  // (employee management, system settings)
-  if (to.meta.role === 'ROLE_SUPER_ADMIN' && !to.meta.requiresAdmin) {
+  // Super admin only check - applies regardless of requiresAdmin flag
+  // Ensures only ROLE_SUPER_ADMIN can access employee management and system settings
+  if (to.meta.role === 'ROLE_SUPER_ADMIN') {
     if (authStore.user?.roleCode !== 'ROLE_SUPER_ADMIN') {
       ElMessage.error('仅超级管理员可访问此页面')
       return next({ name: 'AdminDashboard' })

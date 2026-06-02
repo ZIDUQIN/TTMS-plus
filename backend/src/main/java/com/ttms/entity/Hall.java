@@ -39,6 +39,9 @@ public class Hall {
     /** 备注 */
     private String remark;
 
+    /** 座位布局JSON: 记录不可用座位位置,如["1-5","2-10"] */
+    private String seatLayout;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

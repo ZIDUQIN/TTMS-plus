@@ -5,14 +5,24 @@ import { login as loginApi, register as registerApi } from '@/api/auth'
 export const useAuthStore = defineStore('auth', () => {
   // State
   const token = ref(localStorage.getItem('token') || '')
-  const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
+  const user = ref(parseStoredUser())
+
+function parseStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem('user') || 'null')
+  } catch {
+    localStorage.removeItem('user')
+    localStorage.removeItem('token')
+    return null
+  }
+}
 
   // Getters
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => {
     if (!user.value) return false
     const roleCode = user.value.roleCode
-    return roleCode === 'ROLE_SUPER_ADMIN' || roleCode === 'ROLE_ADMIN' || roleCode === 'ROLE_STAFF'
+    return roleCode === 'ROLE_SUPER_ADMIN' || roleCode === 'ROLE_STAFF'
   })
   const isSuperAdmin = computed(() => {
     if (!user.value) return false

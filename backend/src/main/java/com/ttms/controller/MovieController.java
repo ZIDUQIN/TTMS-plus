@@ -134,8 +134,13 @@ public class MovieController {
      */
     @PutMapping("/set-hot")
     public ApiResponse<Void> setHot(@RequestBody Map<String, Object> params) {
-        Long id = Long.valueOf(params.get("id").toString());
-        Integer isHot = Integer.valueOf(params.get("isHot").toString());
+        Object idObj = params.get("id");
+        Object isHotObj = params.get("isHot");
+        if (idObj == null || isHotObj == null) {
+            return ApiResponse.badRequest("参数id和isHot不能为空");
+        }
+        Long id = Long.valueOf(idObj.toString());
+        Integer isHot = Integer.valueOf(isHotObj.toString());
         log.info("设置热门: id={}, isHot={}", id, isHot);
         movieService.setHot(id, isHot);
         return ApiResponse.success("热门设置成功");
@@ -150,8 +155,13 @@ public class MovieController {
      */
     @PutMapping("/set-status")
     public ApiResponse<Void> setStatus(@RequestBody Map<String, Object> params) {
-        Long id = Long.valueOf(params.get("id").toString());
-        Integer status = Integer.valueOf(params.get("status").toString());
+        Object idObj = params.get("id");
+        Object statusObj = params.get("status");
+        if (idObj == null || statusObj == null) {
+            return ApiResponse.badRequest("参数id和status不能为空");
+        }
+        Long id = Long.valueOf(idObj.toString());
+        Integer status = Integer.valueOf(statusObj.toString());
         log.info("设置影片状态: id={}, status={}", id, status);
         movieService.setStatus(id, status);
         return ApiResponse.success("状态更新成功");

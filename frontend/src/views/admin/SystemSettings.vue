@@ -112,7 +112,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { getSystemConfig, updateSystemConfig, setSystemTheme, getSystemLogs } from '@/api/order'
 import { useThemeStore } from '@/stores/theme'
 import { ElMessage } from 'element-plus'
@@ -142,11 +142,17 @@ const config = reactive({
 
 const originalConfig = { ...config }
 
-const logs = ref([])
+const allLogs = ref([])
 const logLoading = ref(false)
 const logPage = ref(1)
 const logPageSize = ref(15)
 const logTotal = ref(0)
+
+// 使用computed确保分页切换时数据响应式更新
+const logs = computed(() => {
+  const start = (logPage.value - 1) * logPageSize.value
+  return allLogs.value.slice(start, start + logPageSize.value)
+})
 
 function formatDateTime(s) {
   if (!s) return '--'
@@ -201,11 +207,11 @@ async function fetchLogs() {
   logLoading.value = true
   try {
     const res = await getSystemLogs()
-    const allLogs = res.data || []
-    logTotal.value = allLogs.length
-    logs.value = allLogs.slice((logPage.value - 1) * logPageSize.value, logPage.value * logPageSize.value)
+    allLogs.value = res.data || []
+    logTotal.value = allLogs.value.length
+    logPage.value = 1  // 重置到第一页
   } catch (err) {
-    logs.value = []
+    allLogs.value = []
     logTotal.value = 0
   }
   finally { logLoading.value = false }
@@ -240,7 +246,7 @@ onMounted(() => {
 .preview-content { flex: 1; }
 .theme-info { display: flex; flex-direction: column; gap: 2px; }
 .theme-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.theme-desc { font-size: 12px; color: var(--text-muted); }
+.theme-desc { font-size: 13px; color: var(--text-muted); }
 
 .theme-preview-white { background: #f5f7fa; }
 .theme-preview-white .preview-bar { background: #fff; }

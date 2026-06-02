@@ -249,32 +249,39 @@ async function fetchScheduleDetail() {
 
   try {
     const res = await getScheduleSeats(scheduleId)
-    // The API response structure may vary; try to handle common patterns
     const data = res.data
+
+    // The API returns { schedule: {...}, seats: [[...], [...]], rowCount: N, colCount: M }
+    const sch = data.schedule || data
     schedule.value = {
-      id: data.id || data.scheduleId || scheduleId,
-      startTime: data.startTime,
-      endTime: data.endTime,
-      hallName: data.hallName || data.hall?.name,
-      hallRowCount: data.rowCount || data.hall?.rowCount || 8,
-      hallColCount: data.colCount || data.hall?.colCount || 12,
-      price: data.price,
-      movieId: data.movieId
+      id: sch.id || scheduleId,
+      startTime: sch.startTime,
+      endTime: sch.endTime,
+      hallName: sch.hallName || (sch.hall && sch.hall.name) || '',
+      hallRowCount: data.rowCount || sch.hallRowCount || 8,
+      hallColCount: data.colCount || sch.hallColCount || 12,
+      price: sch.price,
+      movieId: sch.movieId
     }
 
-    // Parse seat status
-    if (data.seats) {
-      // seats could be array of objects or a map
-      if (Array.isArray(data.seats)) {
-        data.seats.forEach(seat => {
-          const key = `${seat.seatRow || seat.row}-${String(seat.seatCol || seat.col).padStart(2, '0')}`
-          seatStatusMap.value[key] = seat.status || 'AVAILABLE'
-        })
-      } else if (typeof data.seats === 'object') {
-        seatStatusMap.value = data.seats
-      }
-    } else if (data.seatStatusMap) {
-      seatStatusMap.value = data.seatStatusMap
+    // Parse seat status — seats is a 2D array: [[row1Seats], [row2Seats], ...]
+    if (data.seats && Array.isArray(data.seats)) {
+      // Flatten 2D seat array into seatStatusMap
+      data.seats.forEach(row => {
+        if (Array.isArray(row)) {
+          row.forEach(seat => {
+            // Use seatNumber from DB if available, otherwise construct from row/col
+            let key = seat.seatNumber
+            if (!key) {
+              const rowLetter = String.fromCharCode(64 + (seat.seatRow || 1))
+              key = `${rowLetter}-${String(seat.seatCol || 1).padStart(2, '0')}`
+            }
+            // Map numeric status to SeatGrid's expected string values
+            const statusMap = { 0: 'AVAILABLE', 1: 'LOCKED', 2: 'OCCUPIED', 3: 'AISLE' }
+            seatStatusMap.value[key] = statusMap[seat.status] || 'AISLE'
+          })
+        }
+      })
     }
 
     // Fetch movie detail
@@ -296,6 +303,7 @@ async function fetchScheduleDetail() {
 
 async function handleConfirm() {
   if (selectedSeats.value.length === 0) return
+  if (submitting.value) return  // 防止重复提交
 
   submitting.value = true
   try {
@@ -306,10 +314,16 @@ async function handleConfirm() {
     })
 
     currentOrderId.value = orderRes.data?.id || orderRes.data?.orderId
+    if (!currentOrderId.value) {
+      ElMessage.error('订单创建失败，请稍后重试')
+      submitting.value = false  // 仅在失败时恢复，防止重复提交
+      return
+    }
     paymentVisible.value = true
+    submitting.value = false
   } catch (err) {
-    // handle error
-  } finally {
+    // Error already shown by interceptor
+    console.error('Create order failed:', err)
     submitting.value = false
   }
 }

@@ -9,8 +9,14 @@ CREATE TABLE IF NOT EXISTS `role` (
     `description` VARCHAR(255) COMMENT '角色描述',
     `permissions` TEXT COMMENT '权限JSON数组',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` INT DEFAULT 0 COMMENT '逻辑删除',
     UNIQUE KEY `uk_role_code` (`role_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';
+
+-- 为已有role表添加新字段（兼容旧数据库，如果列不存在会报错，continue-on-error=true将忽略）
+ALTER TABLE `role` ADD COLUMN `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间' AFTER `create_time`;
+ALTER TABLE `role` ADD COLUMN `deleted` INT DEFAULT 0 COMMENT '逻辑删除' AFTER `update_time`;
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS `user` (
@@ -87,11 +93,15 @@ CREATE TABLE IF NOT EXISTS `hall` (
     `hall_type` VARCHAR(20) DEFAULT 'STANDARD' COMMENT '影厅类型: STANDARD/IMAX/VIP/4DX',
     `status` INT DEFAULT 1 COMMENT '状态: 0-维护中 1-正常',
     `remark` VARCHAR(255) COMMENT '备注',
+    `seat_layout` TEXT COMMENT '座位布局JSON: 记录不可用座位位置,如["1-5","2-10"]',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted` INT DEFAULT 0 COMMENT '逻辑删除',
     UNIQUE KEY `uk_hall_name` (`hall_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='影厅表';
+
+-- 为已有hall表添加seat_layout字段
+ALTER TABLE `hall` ADD COLUMN `seat_layout` TEXT COMMENT '座位布局JSON' AFTER `remark`;
 
 -- 场次表
 CREATE TABLE IF NOT EXISTS `schedule` (
@@ -171,18 +181,22 @@ CREATE TABLE IF NOT EXISTS `system_config` (
     `description` VARCHAR(255) COMMENT '配置描述',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` INT DEFAULT 0 COMMENT '逻辑删除',
     UNIQUE KEY `uk_config_key` (`config_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统配置表';
 
--- 插入示例影厅数据（仅在表为空时）
+-- 为已有system_config表添加deleted字段（兼容旧数据库）
+ALTER TABLE `system_config` ADD COLUMN `deleted` INT DEFAULT 0 COMMENT '逻辑删除' AFTER `update_time`;
+
+-- 插入示例影厅数据（仅当对应名称的影厅不存在时才插入）
 INSERT INTO `hall` (`hall_name`, `row_count`, `col_count`, `capacity`, `hall_type`, `status`)
 SELECT '1号标准厅', 8, 12, 96, 'STANDARD', 1
-WHERE NOT EXISTS (SELECT 1 FROM `hall` LIMIT 1);
+WHERE NOT EXISTS (SELECT 1 FROM `hall` WHERE `hall_name` = '1号标准厅');
 
 INSERT INTO `hall` (`hall_name`, `row_count`, `col_count`, `capacity`, `hall_type`, `status`)
 SELECT '2号IMAX巨幕厅', 10, 16, 160, 'IMAX', 1
-WHERE NOT EXISTS (SELECT 2 FROM `hall` LIMIT 1);
+WHERE NOT EXISTS (SELECT 1 FROM `hall` WHERE `hall_name` = '2号IMAX巨幕厅');
 
 INSERT INTO `hall` (`hall_name`, `row_count`, `col_count`, `capacity`, `hall_type`, `status`)
 SELECT '3号VIP豪华厅', 6, 8, 48, 'VIP', 1
-WHERE NOT EXISTS (SELECT 3 FROM `hall` LIMIT 1);
+WHERE NOT EXISTS (SELECT 1 FROM `hall` WHERE `hall_name` = '3号VIP豪华厅');

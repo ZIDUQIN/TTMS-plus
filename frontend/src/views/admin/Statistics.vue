@@ -95,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -103,7 +103,7 @@ import { BarChart, LineChart, PieChart } from 'echarts/charts'
 import {
   TitleComponent, TooltipComponent, LegendComponent, GridComponent
 } from 'echarts/components'
-import { getRevenueStats, getMovieRanking, getMonthlyStats, exportStatistics } from '@/api/statistics'
+import { getRevenueStats, getDailyRevenue, getMovieRanking, getMonthlyStats, exportStatistics } from '@/api/statistics'
 import { ElMessage } from 'element-plus'
 import { Money, Tickets, TrendCharts, StarFilled, Download } from '@element-plus/icons-vue'
 import NavBar from '@/components/NavBar.vue'
@@ -111,16 +111,25 @@ import NavBar from '@/components/NavBar.vue'
 use([CanvasRenderer, BarChart, LineChart, PieChart, TitleComponent, TooltipComponent, LegendComponent, GridComponent])
 
 const dateRange = ref([])
-const revenueData = ref([])
+const revenueSummary = ref({ totalRevenue: 0, orderCount: 0, ticketCount: 0, avgPrice: 0 })
+const dailyData = ref([])
 const rankingData = ref([])
 const monthlyData = ref([])
 
 const summary = computed(() => {
-  const totalRevenue = revenueData.value.reduce((s, d) => s + (Number(d.revenue || d.amount) || 0), 0).toFixed(2)
-  const totalOrders = revenueData.value.reduce((s, d) => s + (Number(d.orderCount || d.count) || 0), 0)
-  const avgPrice = totalOrders > 0 ? (totalRevenue / totalOrders).toFixed(2) : '0.00'
+  const s = revenueSummary.value
+  const totalRevenue = (Number(s.totalRevenue) || 0).toFixed(2)
+  const totalOrders = Number(s.orderCount) || 0
+  const avgPrice = (Number(s.avgPrice) || 0).toFixed(2)
   const topMovie = rankingData.value.length > 0 ? (rankingData.value[0].movieName || rankingData.value[0].name || '--') : '--'
   return { totalRevenue, totalOrders, avgPrice, topMovie }
+})
+
+// 监听日期范围变化，自动刷新数据
+watch(dateRange, () => {
+  if (dateRange.value && dateRange.value.length === 2) {
+    fetchStats()
+  }
 })
 
 const revenueChartOption = computed(() => ({
@@ -128,7 +137,7 @@ const revenueChartOption = computed(() => ({
   grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
   xAxis: {
     type: 'category',
-    data: revenueData.value.map(d => d.date || d.label || ''),
+    data: dailyData.value.map(d => d.date || d.label || ''),
     axisLabel: { rotate: 30 }
   },
   yAxis: { type: 'value' },
@@ -136,7 +145,7 @@ const revenueChartOption = computed(() => ({
     {
       name: '营收',
       type: 'bar',
-      data: revenueData.value.map(d => Number(d.revenue || d.amount) || 0),
+      data: dailyData.value.map(d => Number(d.revenue) || 0),
       itemStyle: {
         color: {
           type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
@@ -149,7 +158,7 @@ const revenueChartOption = computed(() => ({
       name: '订单数',
       type: 'line',
       yAxisIndex: 0,
-      data: revenueData.value.map(d => Number(d.orderCount || d.count) || 0),
+      data: dailyData.value.map(d => Number(d.orderCount) || 0),
       smooth: true,
       lineStyle: { color: '#67c23a' },
       itemStyle: { color: '#67c23a' }
@@ -169,7 +178,7 @@ const rankingChartOption = computed(() => ({
   series: [{
     name: '销售额',
     type: 'bar',
-    data: rankingData.value.map(d => Number(d.sales || d.revenue || d.amount) || 0).reverse(),
+    data: rankingData.value.map(d => Number(d.revenue) || 0).reverse(),
     itemStyle: {
       color: {
         type: 'linear', x: 0, y: 0, x2: 1, y2: 0,
@@ -191,7 +200,7 @@ const monthlyChartOption = computed(() => ({
   series: [{
     name: '月度营收',
     type: 'line',
-    data: monthlyData.value.map(d => Number(d.revenue || d.amount) || 0),
+    data: monthlyData.value.map(d => Number(d.revenue) || 0),
     smooth: true,
     areaStyle: {
       color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
@@ -202,34 +211,70 @@ const monthlyChartOption = computed(() => ({
   }]
 }))
 
+function getDateParams() {
+  if (dateRange.value && dateRange.value.length === 2) {
+    return { startDate: dateRange.value[0], endDate: dateRange.value[1] }
+  }
+  return {}
+}
+
 async function handleExport() {
   try {
-    const res = await exportStatistics()
-    const blob = new Blob([res], { type: 'application/vnd.ms-excel' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `statistics_${new Date().toISOString().slice(0, 10)}.xlsx`
-    a.click()
-    URL.revokeObjectURL(url)
-    ElMessage.success('导出成功')
-  } catch (err) { /* handled */ }
+    const res = await exportStatistics(
+      dateRange.value?.[0] || undefined,
+      dateRange.value?.[1] || undefined
+    )
+    // 后端返回文件路径，通过浏览器直接下载
+    const filePath = res.data
+    if (filePath) {
+      window.open(filePath, '_blank')
+      ElMessage.success('导出成功')
+    } else {
+      ElMessage.error('导出失败：未获取到文件路径')
+    }
+  } catch (err) {
+    ElMessage.error('导出失败')
+  }
 }
 
 async function fetchStats() {
+  const params = getDateParams()
   try {
-    const [revRes, rankRes, monRes] = await Promise.all([
-      getRevenueStats(),
+    // 使用 allSettled 确保单个接口失败不影响其他数据
+    const [revRes, dailyRes, rankRes, monRes] = await Promise.allSettled([
+      getRevenueStats(params.startDate, params.endDate),
+      getDailyRevenue(params.startDate, params.endDate),
       getMovieRanking(),
       getMonthlyStats()
     ])
-    revenueData.value = revRes.data || []
-    rankingData.value = rankRes.data || []
-    monthlyData.value = monRes.data || []
+
+    // 汇总数据
+    if (revRes.status === 'fulfilled') {
+      const d = revRes.value.data || {}
+      revenueSummary.value = {
+        totalRevenue: d.totalRevenue || 0,
+        orderCount: d.orderCount || 0,
+        ticketCount: d.ticketCount || 0,
+        avgPrice: d.avgPrice || 0
+      }
+    }
+
+    // 每日营收数据
+    if (dailyRes.status === 'fulfilled') {
+      dailyData.value = dailyRes.value.data || []
+    }
+
+    // 排行榜
+    if (rankRes.status === 'fulfilled') {
+      rankingData.value = rankRes.value.data || []
+    }
+
+    // 月度数据
+    if (monRes.status === 'fulfilled') {
+      monthlyData.value = monRes.value.data || []
+    }
   } catch (err) {
-    revenueData.value = []
-    rankingData.value = []
-    monthlyData.value = []
+    console.error('获取统计数据失败:', err)
   }
 }
 

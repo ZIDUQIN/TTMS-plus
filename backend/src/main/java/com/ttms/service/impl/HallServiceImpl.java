@@ -67,13 +67,21 @@ public class HallServiceImpl implements HallService {
      */
     @Override
     public Hall add(Hall hall) {
+        // 检查影厅名称是否已存在
+        LambdaQueryWrapper<Hall> nameWrapper = new LambdaQueryWrapper<>();
+        nameWrapper.eq(Hall::getHallName, hall.getHallName());
+        if (hallMapper.selectCount(nameWrapper) > 0) {
+            throw new BusinessException("影厅名称已存在: " + hall.getHallName());
+        }
         // 默认状态为正常
         if (hall.getStatus() == null) {
             hall.setStatus(1);
         }
-        // 自动计算容量
-        if (hall.getRowCount() != null && hall.getColCount() != null) {
-            hall.setCapacity(hall.getRowCount() * hall.getColCount());
+        // 自动计算容量（如果前端没传或计算为0，则使用行列乘积）
+        if (hall.getCapacity() == null || hall.getCapacity() <= 0) {
+            if (hall.getRowCount() != null && hall.getColCount() != null) {
+                hall.setCapacity(hall.getRowCount() * hall.getColCount());
+            }
         }
         hallMapper.insert(hall);
         log.info("影厅添加成功: id={}, 名称={}, 容量={}", hall.getId(), hall.getHallName(), hall.getCapacity());

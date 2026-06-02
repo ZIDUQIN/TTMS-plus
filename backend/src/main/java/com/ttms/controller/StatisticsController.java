@@ -64,6 +64,27 @@ public class StatisticsController {
     }
 
     /**
+     * 获取每日营收数据（用于前端趋势图）
+     * GET /api/admin/statistics/revenue/daily?startDate=2024-01-01&endDate=2024-12-31
+     *
+     * @param startDate 开始日期（可选，默认最近30天）
+     * @param endDate   结束日期（可选，默认今天）
+     * @return 每日数据列表：date, revenue, orderCount
+     */
+    @GetMapping("/revenue/daily")
+    public ApiResponse<List<Map<String, Object>>> getDailyRevenue(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        log.info("每日营收统计查询: startDate={}, endDate={}", startDate, endDate);
+        LocalDate start = (startDate != null && !startDate.isEmpty())
+            ? LocalDate.parse(startDate) : LocalDate.now().minusDays(30);
+        LocalDate end = (endDate != null && !endDate.isEmpty())
+            ? LocalDate.parse(endDate) : LocalDate.now();
+        List<Map<String, Object>> data = statisticsService.getDailyRevenue(start, end);
+        return ApiResponse.success(data);
+    }
+
+    /**
      * 获取月度统计数据
      * GET /api/admin/statistics/monthly
      * 返回最近12个月的月度营收、订单数、售票数

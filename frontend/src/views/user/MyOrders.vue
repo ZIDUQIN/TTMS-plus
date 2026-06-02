@@ -508,7 +508,7 @@ onMounted(fetchOrders)
   }
   .filter-tabs :deep(.el-radio-button__inner) {
     padding: 6px 10px;
-    font-size: 12px;
+    font-size: 13px;
   }
 }
 </style>

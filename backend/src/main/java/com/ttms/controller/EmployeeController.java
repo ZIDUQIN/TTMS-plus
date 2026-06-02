@@ -48,11 +48,22 @@ public class EmployeeController {
         wrapper.orderByDesc(Employee::getCreateTime);
         Page<Employee> result = employeeMapper.selectPage(pageParam, wrapper);
 
-        // 补充角色名称信息
-        for (Employee employee : result.getRecords()) {
-            if (employee.getRoleId() != null) {
-                Role role = roleMapper.selectById(employee.getRoleId());
-                // Employee没有roleName字段，通过其他方式展示
+        // 批量查询所有关联角色，避免N+1查询问题
+        java.util.Set<Long> roleIds = result.getRecords().stream()
+                .map(Employee::getRoleId)
+                .filter(id -> id != null)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!roleIds.isEmpty()) {
+            java.util.Map<Long, Role> roleMap = roleMapper.selectBatchIds(roleIds).stream()
+                    .collect(java.util.stream.Collectors.toMap(Role::getId, r -> r));
+            for (Employee employee : result.getRecords()) {
+                if (employee.getRoleId() != null) {
+                    Role role = roleMap.get(employee.getRoleId());
+                    if (role != null) {
+                        employee.setRoleName(role.getRoleName());
+                        employee.setRoleCode(role.getRoleCode());
+                    }
+                }
             }
         }
 
@@ -76,8 +87,15 @@ public class EmployeeController {
             throw new BusinessException("用户名已存在");
         }
 
-        // 检查角色是否存在
-        if (employee.getRoleId() != null) {
+        // 处理角色：支持 roleCode 或 roleId
+        if (employee.getRoleCode() != null && !employee.getRoleCode().isBlank()) {
+            Role role = roleMapper.findByRoleCode(employee.getRoleCode());
+            if (role == null) {
+                throw new BusinessException("指定的角色不存在: " + employee.getRoleCode());
+            }
+            employee.setRoleId(role.getId());
+            employee.setRoleName(role.getRoleName());
+        } else if (employee.getRoleId() != null) {
             Role role = roleMapper.selectById(employee.getRoleId());
             if (role == null) {
                 throw new BusinessException("指定的角色不存在");
@@ -102,8 +120,8 @@ public class EmployeeController {
         }
 
         employeeMapper.insert(employee);
-        log.info("员工添加成功: id={}, username={}, 初始密码={}", employee.getId(), employee.getUsername(), rawPassword);
-        return ApiResponse.success("员工添加成功，默认密码: " + rawPassword, employee);
+        log.info("员工添加成功: id={}, username={}", employee.getId(), employee.getUsername());
+        return ApiResponse.success("员工添加成功，请妥善保管密码", employee);
     }
 
     /**
@@ -122,8 +140,15 @@ public class EmployeeController {
             throw new BusinessException("员工不存在");
         }
 
-        // 如果修改了角色，验证新角色存在
-        if (employee.getRoleId() != null && !employee.getRoleId().equals(existing.getRoleId())) {
+        // 处理角色：支持 roleCode 或 roleId
+        if (employee.getRoleCode() != null && !employee.getRoleCode().isBlank()) {
+            Role role = roleMapper.findByRoleCode(employee.getRoleCode());
+            if (role == null) {
+                throw new BusinessException("指定的角色不存在: " + employee.getRoleCode());
+            }
+            employee.setRoleId(role.getId());
+            employee.setRoleName(role.getRoleName());
+        } else if (employee.getRoleId() != null && !employee.getRoleId().equals(existing.getRoleId())) {
             Role role = roleMapper.selectById(employee.getRoleId());
             if (role == null) {
                 throw new BusinessException("指定的角色不存在");
@@ -163,8 +188,8 @@ public class EmployeeController {
 
         employee.setPassword(passwordEncoder.encode(newPassword));
         employeeMapper.updateById(employee);
-        log.info("密码重置成功: id={}, username={}, 新密码={}", id, employee.getUsername(), newPassword);
-        return ApiResponse.success("密码已重置为: " + newPassword);
+        log.info("密码重置成功: id={}, username={}", id, employee.getUsername());
+        return ApiResponse.success("密码已重置，请妥善保管新密码");
     }
 
     /**

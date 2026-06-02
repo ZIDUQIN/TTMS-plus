@@ -36,7 +36,7 @@
           <el-table-column prop="movieName" label="影片" min-width="130" show-overflow-tooltip />
           <el-table-column prop="hallName" label="影厅" width="100" />
           <el-table-column label="座位" width="120">
-            <template #default="{ row }">{{ (row.seatNumbers || row.seats || []).join('、') }}</template>
+            <template #default="{ row }">{{ formatSeats(row) }}</template>
           </el-table-column>
           <el-table-column label="金额" width="90">
             <template #default="{ row }">${{ row.totalAmount || row.totalPrice }}</template>
@@ -61,7 +61,7 @@
       </div>
 
       <!-- Assist Create Dialog -->
-      <el-dialog v-model="assistVisible" title="代客下单" width="560px" :close-on-click-modal="false">
+      <el-dialog v-model="assistVisible" title="代客下单" width="560px" :close-on-click-modal="false" :before-close="handleAssistClose">
         <el-steps :active="assistStep" finish-status="success" align-center style="margin-bottom: 24px;">
           <el-step title="选择影片" />
           <el-step title="选择场次" />
@@ -69,10 +69,10 @@
         </el-steps>
         <div v-show="assistStep === 0">
           <el-table :data="movies" highlight-current-row @current-change="onSelectMovie" max-height="300">
-            <el-table-column prop="movieName" label="影片名称" />
+            <el-table-column prop="name" label="影片名称" />
             <el-table-column prop="genre" label="类型" width="80" />
             <el-table-column label="票价" width="80">
-              <template #default="{ row }">${{ row.basePrice }}</template>
+              <template #default="{ row }">${{ row.price }}</template>
             </el-table-column>
           </el-table>
         </div>
@@ -163,13 +163,16 @@ const filteredOrders = computed(() => {
       (o.movieName || '').toLowerCase().includes(kw)
     )
   }
-  if (filterStatus.value) {
-    list = list.filter(o => (o.status || o.orderStatus) === filterStatus.value)
+  if (filterStatus.value !== '' && filterStatus.value != null) {
+    list = list.filter(o => (o.status ?? o.orderStatus) === Number(filterStatus.value))
   }
   if (dateRange.value && dateRange.value.length === 2) {
     list = list.filter(o => {
-      const createTime = (o.createTime || o.createdAt || '').substring(0, 10)
-      return createTime >= dateRange.value[0] && createTime <= dateRange.value[1]
+      try {
+        const raw = o.createTime || o.createdAt || ''
+        const createTime = typeof raw === 'string' ? raw.substring(0, 10) : ''
+        return createTime >= dateRange.value[0] && createTime <= dateRange.value[1]
+      } catch { return true }
     })
   }
   return list
@@ -192,17 +195,45 @@ function statusType(s) {
 
 function formatDateTime(s) {
   if (!s) return '--'
-  const d = new Date(s)
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  try {
+    const d = new Date(s)
+    if (isNaN(d.getTime())) return '--'
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  } catch { return '--' }
+}
+
+// 格式化座位号：后端返回逗号分隔字符串（如 "A-01,B-02"），需分割后用顿号拼接
+function formatSeats(row) {
+  const seats = row.seatNumbers || row.seats
+  if (!seats) return '--'
+  if (Array.isArray(seats)) return seats.join('、')
+  if (typeof seats === 'string') return seats.split(',').join('、')
+  return String(seats)
 }
 
 async function fetchOrders() {
   loading.value = true
   try {
     const res = await getAdminOrders()
-    orders.value = res.data?.records || res.data || []
-  } catch (err) { orders.value = [] }
-  finally { loading.value = false }
+    // 兼容多种API响应格式
+    if (Array.isArray(res.data)) {
+      orders.value = res.data
+    } else if (res.data?.records) {
+      orders.value = res.data.records
+    } else if (res.data) {
+      orders.value = res.data
+    } else {
+      orders.value = []
+    }
+  } catch (err) {
+    console.error('获取订单列表失败:', err)
+    orders.value = []
+  } finally { loading.value = false }
+}
+
+function handleAssistClose() {
+  // Always allow closing the dialog
+  assistVisible.value = false
 }
 
 function openAssistCreate() {
@@ -212,9 +243,19 @@ function openAssistCreate() {
   assistSelectedSeats.value = []
   assistAvailableSeats.value = []
   assistSchedules.value = []
+  movies.value = []
   assistVisible.value = true
-  // Load movies
-  getMovieList().then(res => { movies.value = res.data || [] }).catch(() => {})
+  // Load movies with proper error handling
+  loadAssistMovies()
+}
+
+async function loadAssistMovies() {
+  try {
+    const res = await getMovieList()
+    movies.value = Array.isArray(res.data) ? res.data : (res.data?.records || [])
+  } catch (err) {
+    movies.value = []
+  }
 }
 
 function onSelectMovie(row) {

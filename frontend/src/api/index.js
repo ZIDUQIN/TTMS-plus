@@ -23,6 +23,10 @@ service.interceptors.request.use(
 // Response interceptor
 service.interceptors.response.use(
   (response) => {
+    // 对于blob类型的响应（如文件下载），跳过JSON校验
+    if (response.config.responseType === 'blob') {
+      return response.data
+    }
     const res = response.data
     if (res.code !== 200) {
       ElMessage.error(res.message || '请求失败')
@@ -36,8 +40,11 @@ service.interceptors.response.use(
       if (status === 401) {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
-        ElMessage.error('登录已过期，请重新登录')
-        window.location.href = '/login'
+        // 防止重定向循环：如果已经在登录页则不重定向
+        if (!window.location.pathname.includes('/login')) {
+          ElMessage.error('登录已过期，请重新登录')
+          window.location.href = '/login'
+        }
       } else if (status === 403) {
         ElMessage.error('没有权限执行此操作')
       } else if (status === 500) {

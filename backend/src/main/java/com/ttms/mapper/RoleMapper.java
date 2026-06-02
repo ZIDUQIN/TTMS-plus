@@ -3,6 +3,8 @@ package com.ttms.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.ttms.entity.Role;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 /**
  * 角色数据访问层
@@ -10,6 +12,7 @@ import org.apache.ibatis.annotations.Mapper;
  */
 @Mapper
 public interface RoleMapper extends BaseMapper<Role> {
-    // BaseMapper已提供所有基本CRUD操作
-    // 如需自定义查询可在此添加
+
+    @Select("SELECT * FROM role WHERE role_code = #{roleCode}")
+    Role findByRoleCode(@Param("roleCode") String roleCode);
 }

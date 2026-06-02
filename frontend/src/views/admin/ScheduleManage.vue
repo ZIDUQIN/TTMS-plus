@@ -24,7 +24,7 @@
           </el-table-column>
           <el-table-column label="已售/总座位" width="120">
             <template #default="{ row }">
-              {{ row.soldCount || 0 }} / {{ row.totalSeats || (row.hall?.rowCount || row.rowCount || 8) * (row.hall?.colCount || row.colCount || 12) }}
+              {{ row.soldCount || 0 }} / {{ (row.hallRowCount || 8) * (row.hallColCount || 12) }}
             </template>
           </el-table-column>
           <el-table-column label="状态" width="100">
@@ -95,9 +95,8 @@
 
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue'
-import { getSchedulesByMovie } from '@/api/order'
+import { getScheduleList, addSchedule, updateSchedule, deleteSchedule, getHallList } from '@/api/order'
 import { getMovieList } from '@/api/movie'
-import { addSchedule, updateSchedule, deleteSchedule, getHallList } from '@/api/order'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import NavBar from '@/components/NavBar.vue'
@@ -144,7 +143,7 @@ function formatDateTime(s) {
 function onMovieChange(movieId) {
   const movie = movies.value.find(m => m.id === movieId)
   if (movie) {
-    form.price = movie.basePrice || movie.price || 0
+    form.price = movie.price || 0
     calcEndTime()
   }
 }
@@ -217,7 +216,6 @@ async function handleDelete(row) {
 async function fetchSchedules() {
   loading.value = true
   try {
-    const { getScheduleList } = await import('@/api/order')
     const res = await getScheduleList()
     schedules.value = res.data?.records || res.data || []
   } catch (err) { schedules.value = [] }

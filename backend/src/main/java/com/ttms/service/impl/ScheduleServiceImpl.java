@@ -319,27 +319,72 @@ public class ScheduleServiceImpl implements ScheduleService {
      * @return 生成的座位列表
      */
     private List<Seat> generateSeats(Long scheduleId, Hall hall) {
+        // 二次检查：防止并发请求重复生成座位
+        List<Seat> existingSeats = seatMapper.selectByScheduleId(scheduleId);
+        if (existingSeats != null && !existingSeats.isEmpty()) {
+            log.debug("座位已存在，跳过生成: scheduleId={}, 座位数={}", scheduleId, existingSeats.size());
+            return existingSeats;
+        }
+
         List<Seat> seats = new ArrayList<>();
         int rowCount = hall.getRowCount() != null ? hall.getRowCount() : 10;
         int colCount = hall.getColCount() != null ? hall.getColCount() : 15;
 
+        // 解析影厅座位布局，获取不可用的座位位置
+        Set<String> disabledSeats = parseDisabledSeats(hall.getSeatLayout());
+
         for (int row = 1; row <= rowCount; row++) {
-            // 行号转换为字母（超过26行时使用双字母）
             String rowLetter = getRowLetter(row - 1);
             for (int col = 1; col <= colCount; col++) {
+                String seatKey = row + "-" + col;
+
                 Seat seat = new Seat();
                 seat.setScheduleId(scheduleId);
                 seat.setSeatRow(row);
                 seat.setSeatCol(col);
                 seat.setSeatNumber(rowLetter + "-" + String.format("%02d", col));
-                seat.setStatus(0); // 初始状态：空闲
+
+                // 如果该座位在布局中被标记为不可用，设置为过道/不可用状态
+                if (disabledSeats.contains(seatKey)) {
+                    seat.setStatus(3); // 3 = 过道/不可用
+                } else {
+                    seat.setStatus(0); // 0 = 空闲
+                }
                 seatMapper.insert(seat);
                 seats.add(seat);
             }
         }
-        log.info("场次座位自动生成完成: scheduleId={}, 总座位数={} ({}x{})",
-            scheduleId, seats.size(), rowCount, colCount);
+        long usableCount = seats.stream().filter(s -> s.getStatus() != 3).count();
+        log.info("场次座位自动生成完成: scheduleId={}, 总座位数={}, 可用座位={} ({}x{})",
+            scheduleId, seats.size(), usableCount, rowCount, colCount);
         return seats;
+    }
+
+    /**
+     * 解析座位布局JSON，提取不可用座位位置集合
+     * JSON格式: ["1-5","2-10","3-8"]
+     */
+    private Set<String> parseDisabledSeats(String seatLayout) {
+        Set<String> disabled = new java.util.HashSet<>();
+        if (seatLayout == null || seatLayout.isBlank()) {
+            return disabled;
+        }
+        try {
+            // 简单解析JSON数组: ["1-5","2-10"]
+            String content = seatLayout.trim();
+            if (content.startsWith("[") && content.endsWith("]")) {
+                content = content.substring(1, content.length() - 1);
+                for (String part : content.split(",")) {
+                    String seatKey = part.trim().replaceAll("\"", "");
+                    if (!seatKey.isEmpty()) {
+                        disabled.add(seatKey);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("解析座位布局失败: {}", e.getMessage());
+        }
+        return disabled;
     }
 
     /**
@@ -370,19 +415,38 @@ public class ScheduleServiceImpl implements ScheduleService {
         if (schedules == null || schedules.isEmpty()) {
             return;
         }
+        // 批量查询关联影片，避免N+1查询
+        Set<Long> movieIds = schedules.stream()
+                .map(Schedule::getMovieId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, Movie> movieMap = new HashMap<>();
+        if (!movieIds.isEmpty()) {
+            movieMapper.selectBatchIds(movieIds)
+                    .forEach(m -> movieMap.put(m.getId(), m));
+        }
+        // 批量查询关联影厅，避免N+1查询
+        Set<Long> hallIds = schedules.stream()
+                .map(Schedule::getHallId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, Hall> hallMap = new HashMap<>();
+        if (!hallIds.isEmpty()) {
+            hallMapper.selectBatchIds(hallIds)
+                    .forEach(h -> hallMap.put(h.getId(), h));
+        }
+        // 补充关联信息
         for (Schedule schedule : schedules) {
-            // 补充影片信息
             if (schedule.getMovieId() != null) {
-                Movie movie = movieMapper.selectById(schedule.getMovieId());
+                Movie movie = movieMap.get(schedule.getMovieId());
                 if (movie != null) {
                     schedule.setMovieName(movie.getMovieName());
                     schedule.setDuration(movie.getDuration());
                     schedule.setPosterUrl(movie.getPosterUrl());
                 }
             }
-            // 补充影厅信息
             if (schedule.getHallId() != null) {
-                Hall hall = hallMapper.selectById(schedule.getHallId());
+                Hall hall = hallMap.get(schedule.getHallId());
                 if (hall != null) {
                     schedule.setHallName(hall.getHallName());
                     schedule.setHallRowCount(hall.getRowCount());

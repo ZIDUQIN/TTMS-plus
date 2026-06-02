@@ -24,26 +24,35 @@ import java.util.Map;
 @Component
 public class JwtTokenProvider {
 
-    /** JWT签名密钥，从application.yml读取 */
-    @Value("${jwt.secret}")
+    /** JWT签名密钥，从application.yml读取，默认值确保启动不报错 */
+    @Value("${jwt.secret:TTMS2024DefaultJWTSecretKeyForDevelopmentOnly}")
     private String jwtSecret;
 
     /** JWT过期时间（毫秒），从application.yml读取，默认24小时 */
-    @Value("${jwt.expiration}")
+    @Value("${jwt.expiration:86400000}")
     private long jwtExpiration;
 
     /**
      * 获取用于签名和验证的密钥对象
      * 使用HMAC-SHA算法，密钥至少需要256位(32字节)
-     * 如果配置的secret不足32字节，会自动补齐到32字节
+     * 如果配置的secret不足32字节，使用HKDF扩展方式补齐
      */
     private SecretKey getSigningKey() {
         byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        // 确保密钥长度至少为256位(32字节)，不足则补齐
+        // 确保密钥长度至少为256位(32字节)
         if (keyBytes.length < 32) {
-            byte[] paddedKey = new byte[32];
-            System.arraycopy(keyBytes, 0, paddedKey, 0, keyBytes.length);
-            keyBytes = paddedKey;
+            // 使用迭代哈希扩展密钥长度，而非零字节填充
+            try {
+                java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+                byte[] hashed = digest.digest(keyBytes);
+                keyBytes = new byte[32];
+                System.arraycopy(hashed, 0, keyBytes, 0, Math.min(hashed.length, 32));
+            } catch (java.security.NoSuchAlgorithmException e) {
+                // SHA-256必然可用，回退到补齐逻辑
+                byte[] paddedKey = new byte[32];
+                System.arraycopy(keyBytes, 0, paddedKey, 0, keyBytes.length);
+                keyBytes = paddedKey;
+            }
         }
         return Keys.hmacShaKeyFor(keyBytes);
     }

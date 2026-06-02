@@ -33,6 +33,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            // 启用CORS（必须在Spring Security链中配置，否则OPTIONS预检请求会被拦截）
+            .cors(cors -> {})
+
             // 禁用CSRF（前后端分离项目不需要CSRF保护，因为使用JWT令牌认证）
             .csrf(csrf -> csrf.disable())
 
@@ -58,6 +61,8 @@ public class SecurityConfig {
                 .requestMatchers("/uploads/**").permitAll()
                 // 管理端接口需要 SUPER_ADMIN 或 STAFF 角色
                 .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "STAFF")
+                // 文件上传接口需要管理员角色
+                .requestMatchers("/api/upload").hasAnyRole("SUPER_ADMIN", "STAFF")
                 // 用户端接口需要认证（所有已登录用户均可访问）
                 .requestMatchers("/api/user/**").authenticated()
                 // 其他所有请求需要认证

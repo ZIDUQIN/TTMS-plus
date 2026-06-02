@@ -49,4 +49,13 @@ public interface StatisticsService {
      * @return Excel文件路径
      */
     String exportToExcel(LocalDate startDate, LocalDate endDate);
+
+    /**
+     * 获取每日营收数据（用于前端趋势图）
+     *
+     * @param startDate 开始日期
+     * @param endDate   结束日期
+     * @return 每日数据列表，每项包含 date, revenue, orderCount
+     */
+    List<Map<String, Object>> getDailyRevenue(LocalDate startDate, LocalDate endDate);
 }

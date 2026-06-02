@@ -20,10 +20,11 @@ export function payOrder(orderId) {
 }
 
 // Get my orders
-export function getMyOrders() {
+export function getMyOrders(page = 1, size = 10) {
   return request({
     url: '/user/orders/my',
-    method: 'get'
+    method: 'get',
+    params: { page, size }
   })
 }
 

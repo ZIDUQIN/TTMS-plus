@@ -43,6 +43,18 @@ export function updateMovie(data) {
   })
 }
 
+// Upload poster image
+export function uploadPoster(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/upload',
+    method: 'post',
+    data: formData
+    // Don't set Content-Type manually — axios will auto-set multipart/form-data with boundary
+  })
+}
+
 // Delete movie (admin)
 export function deleteMovie(id) {
   return request({

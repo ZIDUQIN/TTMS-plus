@@ -15,15 +15,15 @@
         <el-table :data="filteredMovies" v-loading="loading" stripe>
           <el-table-column label="海报" width="90">
             <template #default="{ row }">
-              <img :src="row.posterUrl || defaultPoster" class="table-poster" @error="onImgError" />
+              <img :src="row.poster || defaultPoster" class="table-poster" @error="onImgError" />
             </template>
           </el-table-column>
-          <el-table-column prop="movieName" label="影片名称" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="name" label="影片名称" min-width="150" show-overflow-tooltip />
           <el-table-column prop="genre" label="类型" width="100" />
           <el-table-column prop="duration" label="时长(分)" width="90" />
           <el-table-column prop="releaseDate" label="上映日期" width="120" />
           <el-table-column label="票价" width="80">
-            <template #default="{ row }">${{ row.basePrice || '--' }}</template>
+            <template #default="{ row }">${{ row.price || '--' }}</template>
           </el-table-column>
           <el-table-column label="状态" width="100">
             <template #default="{ row }">
@@ -42,7 +42,7 @@
           <el-table-column label="操作" width="220" fixed="right">
             <template #default="{ row }">
               <el-button size="small" text type="primary" @click="openEdit(row)">编辑</el-button>
-              <el-button size="small" text :type="row.isHot ? 'warning' : 'success'" @click="toggleHot(row)">取消热映</el-button>
+              <el-button size="small" text :type="row.isHot ? 'warning' : 'success'" @click="toggleHot(row)">{{ row.isHot ? '取消热映' : '设为热映' }}</el-button>
               <el-button size="small" text type="danger" @click="handleDelete(row)">删除</el-button>
             </template>
           </el-table-column>
@@ -104,7 +104,24 @@
               </el-form-item>
             </el-col>
           </el-row>
-          <el-form-item label="海报URL"><el-input v-model="form.poster" placeholder="请输入海报图片URL" /></el-form-item>
+          <el-form-item label="海报图片">
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+              <el-upload
+                :auto-upload="true"
+                :show-file-list="false"
+                :before-upload="beforePosterUpload"
+                :http-request="handlePosterUpload"
+                accept="image/*"
+              >
+                <el-button type="primary" :loading="uploading">选择图片上传</el-button>
+              </el-upload>
+              <span style="color: var(--text-muted); font-size: 13px;">或</span>
+              <el-input v-model="form.poster" placeholder="输入海报图片URL" style="flex: 1; min-width: 200px;" />
+            </div>
+            <div v-if="form.poster" style="margin-top: 8px;">
+              <img :src="form.poster" style="max-height: 120px; border-radius: 4px;" @error="$event.target.style.display='none'" />
+            </div>
+          </el-form-item>
           <el-form-item label="影片描述"><el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入影片描述" /></el-form-item>
         </el-form>
         <template #footer>
@@ -118,7 +135,7 @@
 
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue'
-import { getMovieList, addMovie, updateMovie, deleteMovie } from '@/api/movie'
+import { getMovieList, addMovie, updateMovie, deleteMovie, uploadPoster } from '@/api/movie'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
 import NavBar from '@/components/NavBar.vue'
@@ -130,6 +147,7 @@ const dialogVisible = ref(false)
 const isEdit = ref(false)
 const editingId = ref(null)
 const submitting = ref(false)
+const uploading = ref(false)
 const formRef = ref(null)
 
 const genreOptions = ['动作', '喜剧', '爱情', '科幻', '恐怖', '动画', '剧情', '悬疑', '战争', '纪录片', '奇幻', '犯罪', '冒险']
@@ -150,7 +168,7 @@ const rules = {
 const filteredMovies = computed(() => {
   if (!searchText.value) return movies.value
   const kw = searchText.value.toLowerCase()
-  return movies.value.filter(m => m.movieName?.toLowerCase().includes(kw))
+  return movies.value.filter(m => m.name?.toLowerCase().includes(kw))
 })
 
 function resetForm() {
@@ -161,9 +179,9 @@ function openAdd() { isEdit.value = false; editingId.value = null; resetForm(); 
 
 function openEdit(row) {
   isEdit.value = true; editingId.value = row.id
-  form.name = row.movieName; form.genre = row.genre; form.duration = row.duration; form.price = row.basePrice
+  form.name = row.name; form.genre = row.genre; form.duration = row.duration; form.price = row.price
   form.director = row.director || ''; form.actors = row.actors || ''; form.country = row.country || ''; form.language = row.language || ''
-  form.releaseDate = row.releaseDate; form.rating = row.rating || 0; form.poster = row.posterUrl || ''; form.description = row.description || ''; form.status = row.status
+  form.releaseDate = row.releaseDate; form.rating = row.rating || 0; form.poster = row.poster || ''; form.description = row.description || ''; form.status = row.status
   dialogVisible.value = true
 }
 
@@ -187,7 +205,7 @@ async function handleSubmit() {
 }
 
 async function handleDelete(row) {
-  try { await ElMessageBox.confirm(`确定要删除"${row.movieName}"吗？`, '删除确认', { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }) } catch { return }
+  try { await ElMessageBox.confirm(`确定要删除"${row.name}"吗？`, '删除确认', { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }) } catch { return }
   try { await deleteMovie(row.id); ElMessage.success('已删除'); fetchMovies() } catch (err) { /* handled */ }
 }
 
@@ -198,6 +216,35 @@ async function toggleHot(row) {
     row.isHot = newHot
     ElMessage.success(newHot ? '已设为热映' : '已取消热映')
   } catch (err) { /* handled */ }
+}
+
+function beforePosterUpload(file) {
+  const isImage = file.type.startsWith('image/')
+  if (!isImage) {
+    ElMessage.error('只能上传图片文件！')
+    return false
+  }
+  const isLt10M = file.size / 1024 / 1024 < 10
+  if (!isLt10M) {
+    ElMessage.error('图片大小不能超过 10MB！')
+    return false
+  }
+  return true
+}
+
+async function handlePosterUpload(options) {
+  uploading.value = true
+  try {
+    const res = await uploadPoster(options.file)
+    if (res.data && res.data.url) {
+      form.poster = res.data.url
+      ElMessage.success('海报上传成功')
+    }
+  } catch (err) {
+    // Error already shown by axios interceptor
+  } finally {
+    uploading.value = false
+  }
 }
 
 async function fetchMovies() {

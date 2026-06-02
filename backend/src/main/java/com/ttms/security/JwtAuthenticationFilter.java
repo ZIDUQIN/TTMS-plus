@@ -88,7 +88,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception e) {
-            log.warn("JWT认证处理失败: {} | 请求路径: {}", e.getMessage(), requestPath);
+            log.debug("JWT认证处理跳过: {} | 请求路径: {}", e.getMessage(), requestPath);
             // 不在此处抛出异常，让后面的Spring Security过滤器处理授权
             SecurityContextHolder.clearContext();
         }

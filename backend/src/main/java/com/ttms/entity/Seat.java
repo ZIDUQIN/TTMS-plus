@@ -25,7 +25,7 @@ public class Seat {
     /** 座位编号: 如"A-05" */
     private String seatNumber;
 
-    /** 状态: 0-空闲 1-已锁定 2-已售出 */
+    /** 状态: 0-空闲 1-已锁定 2-已售出 3-过道/不可用 */
     private Integer status;
 
     /** 锁定时间(用于超时释放) */

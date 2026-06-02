@@ -18,8 +18,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 /**
  * 订单服务实现类
@@ -121,9 +124,8 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalPrice(totalPrice);
         orderMapper.updateById(order);
 
-        // 8. 增加场次已售数量（预占，实际支付后不需要再更新）
-        schedule.setSoldCount((schedule.getSoldCount() != null ? schedule.getSoldCount() : 0) + seatNumbers.size());
-        scheduleMapper.updateById(schedule);
+        // 8. 原子增加场次已售数量（预占座位，防止竞态条件）
+        scheduleMapper.incrementSoldCount(schedule.getId(), seatNumbers.size());
 
         // 9. 记录操作日志
         OrderLog logEntry = new OrderLog();
@@ -165,8 +167,10 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) {
             throw new BusinessException("订单不存在");
         }
-        // 权限校验：只能支付自己的订单（管理员协助支付可在此扩展）
-        // 此处不限制，因为管理员也有可能需要支付
+        // 权限校验：只能支付自己的订单，管理员协助支付通过独立接口
+        if (!order.getUserId().equals(userId)) {
+            throw new BusinessException(403, "无权操作他人订单");
+        }
         // 状态校验：只有待支付状态的订单才能支付
         if (order.getStatus() != 0) {
             if (order.getStatus() == 1) {
@@ -287,11 +291,9 @@ public class OrderServiceImpl implements OrderService {
         // 4. 释放原订单的座位
         seatMapper.releaseSeatsByOrderId(oldOrder.getId());
 
-        // 更新原场次已售数量
+        // 原子减少原场次已售数量
         if (oldSchedule != null) {
-            oldSchedule.setSoldCount(Math.max(0,
-                (oldSchedule.getSoldCount() != null ? oldSchedule.getSoldCount() : 0) - oldOrder.getSeatCount()));
-            scheduleMapper.updateById(oldSchedule);
+            scheduleMapper.decrementSoldCount(oldSchedule.getId(), oldOrder.getSeatCount());
         }
 
         // 5. 将原订单标记为已改签
@@ -301,7 +303,13 @@ public class OrderServiceImpl implements OrderService {
         oldOrder.setRescheduleTime(LocalDateTime.now());
         orderMapper.updateById(oldOrder);
 
-        // 6. 创建新订单
+        // 6. 计算新旧票价
+        BigDecimal oldTotalPrice = oldOrder.getTotalPrice() != null ? oldOrder.getTotalPrice() : BigDecimal.ZERO;
+        BigDecimal newUnitPrice = newSchedule.getPrice() != null ? newSchedule.getPrice() : BigDecimal.ZERO;
+        BigDecimal newTotalPrice = newUnitPrice.multiply(BigDecimal.valueOf(newSeatNumbers.size()));
+        BigDecimal priceDiff = newTotalPrice.subtract(oldTotalPrice); // 正数=需补差价，负数=需退款
+
+        // 7. 创建新订单
         String newOrderNo = generateOrderNo();
         Order newOrder = new Order();
         newOrder.setOrderNo(newOrderNo);
@@ -311,9 +319,22 @@ public class OrderServiceImpl implements OrderService {
         newOrder.setHallId(newSchedule.getHallId());
         newOrder.setSeatNumbers(String.join(",", newSeatNumbers));
         newOrder.setSeatCount(newSeatNumbers.size());
-        newOrder.setStatus(1);  // 改签订单默认已支付（因为是从已支付订单改签而来）
-        newOrder.setPayTime(LocalDateTime.now());
+        newOrder.setTotalPrice(newTotalPrice);
         newOrder.setOriginalOrderId(oldOrder.getId());
+
+        // 根据价差决定新订单状态
+        String priceDiffDesc;
+        if (priceDiff.compareTo(BigDecimal.ZERO) > 0) {
+            // 新票价 > 旧票价：新订单为待支付状态，需补差价
+            newOrder.setStatus(0);
+            priceDiffDesc = "需补差价 $" + priceDiff;
+        } else {
+            // 新票价 <= 旧票价：新订单直接为待观影状态
+            newOrder.setStatus(1);
+            newOrder.setPayTime(LocalDateTime.now());
+            priceDiffDesc = priceDiff.compareTo(BigDecimal.ZERO) < 0
+                ? "需退款 $" + priceDiff.abs() + "（已退至原订单备注）" : "无差价";
+        }
         orderMapper.insert(newOrder);
 
         // 锁定新座位
@@ -321,34 +342,37 @@ public class OrderServiceImpl implements OrderService {
             Seat seat = seatMapper.selectByScheduleAndNumber(request.getNewScheduleId(), seatNumber);
             if (seat != null) {
                 seatMapper.lockSeat(seat.getId(), newOrder.getId());
-                seatMapper.markSold(seat.getId()); // 直接标记已售出
+                if (newOrder.getStatus() == 1) {
+                    // 只有直接生效的订单才标记已售出；待支付的先锁定
+                    seatMapper.markSold(seat.getId());
+                }
             }
         }
 
-        // 计算新订单金额
-        BigDecimal newUnitPrice = newSchedule.getPrice() != null ? newSchedule.getPrice() : BigDecimal.ZERO;
-        BigDecimal newTotalPrice = newUnitPrice.multiply(BigDecimal.valueOf(newSeatNumbers.size()));
-        newOrder.setTotalPrice(newTotalPrice);
-        orderMapper.updateById(newOrder);
+        // 原子调整新场次已售数量（仅已支付状态计入）
+        if (newOrder.getStatus() == 1) {
+            scheduleMapper.incrementSoldCount(newSchedule.getId(), newSeatNumbers.size());
+        }
 
-        // 更新新场次已售数量
-        newSchedule.setSoldCount((newSchedule.getSoldCount() != null ? newSchedule.getSoldCount() : 0)
-            + newSeatNumbers.size());
-        scheduleMapper.updateById(newSchedule);
+        // 8. 记录原订单改签备注（含价差信息）
+        oldOrder.setRescheduleTime(LocalDateTime.now());
+        orderMapper.updateById(oldOrder);
 
-        // 7. 记录操作日志（原订单）
+        // 9. 记录操作日志
         OrderLog logEntry = new OrderLog();
         logEntry.setOrderId(oldOrder.getId());
         logEntry.setOperationType("RESCHEDULE");
         logEntry.setBeforeContent(oldOrderInfo);
         logEntry.setAfterContent("改签至新订单: " + newOrderNo + ", 场次: " + request.getNewScheduleId()
-            + ", 座位: " + String.join(",", newSeatNumbers));
+            + ", 座位: " + String.join(",", newSeatNumbers)
+            + " | 原价: $" + oldTotalPrice + ", 新价: $" + newTotalPrice + ", " + priceDiffDesc);
         logEntry.setOperatorId(userId);
         logEntry.setOperatorType("USER");
-        logEntry.setRemark("用户改签");
+        logEntry.setRemark("用户改签 (" + priceDiffDesc + ")");
         orderLogMapper.insert(logEntry);
 
-        log.info("改签成功: 原订单={}, 新订单={}, 用户={}", oldOrder.getOrderNo(), newOrderNo, userId);
+        log.info("改签成功: 原订单={}, 新订单={}, 原价={}, 新价={}, {}",
+            oldOrder.getOrderNo(), newOrderNo, oldTotalPrice, newTotalPrice, priceDiffDesc);
 
         return fillOrderInfo(newOrder);
     }
@@ -394,18 +418,16 @@ public class OrderServiceImpl implements OrderService {
         // 2. 释放座位
         seatMapper.releaseSeatsByOrderId(order.getId());
 
-        // 更新场次已售数量
+        // 原子减少场次已售数量
         if (schedule != null) {
-            schedule.setSoldCount(Math.max(0,
-                (schedule.getSoldCount() != null ? schedule.getSoldCount() : 0) - order.getSeatCount()));
-            scheduleMapper.updateById(schedule);
+            scheduleMapper.decrementSoldCount(schedule.getId(), order.getSeatCount());
         }
 
         // 3. 更新订单状态
         String orderInfo = "订单号: " + order.getOrderNo() + ", 场次: " + order.getScheduleId()
             + ", 座位: " + order.getSeatNumbers() + ", 金额: " + order.getTotalPrice();
         order.setStatus(4);  // 已退票
-        order.setRescheduleTime(LocalDateTime.now());
+        order.setRescheduleTime(LocalDateTime.now());  // 记录退票操作时间
         orderMapper.updateById(order);
 
         // 4. 记录操作日志
@@ -432,22 +454,16 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     public Page<Order> listByUser(Long userId, int page, int size) {
-        // 查询用户订单并分页
-        List<Order> allUserOrders = orderMapper.selectByUserId(userId);
-
+        // 使用数据库级别分页，避免OOM
         Page<Order> pageParam = new Page<>(page, size);
-        pageParam.setTotal(allUserOrders.size());
+        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Order::getUserId, userId);
+        wrapper.orderByDesc(Order::getCreateTime);
 
-        int start = (int) ((page - 1) * size);
-        int end = Math.min(start + size, allUserOrders.size());
-
-        if (start < allUserOrders.size()) {
-            pageParam.setRecords(allUserOrders.subList(start, end));
-        } else {
-            pageParam.setRecords(List.of());
-        }
-
-        return pageParam;
+        Page<Order> result = orderMapper.selectPage(pageParam, wrapper);
+        // 批量补充关联信息，避免N+1查询
+        batchFillOrderInfo(result.getRecords());
+        return result;
     }
 
     /**
@@ -468,9 +484,8 @@ public class OrderServiceImpl implements OrderService {
         wrapper.orderByDesc(Order::getCreateTime);
 
         Page<Order> result = orderMapper.selectPage(pageParam, wrapper);
-        for (Order order : result.getRecords()) {
-            fillOrderInfo(order);
-        }
+        // 批量填充关联信息，避免N+1查询
+        batchFillOrderInfo(result.getRecords());
         return result;
     }
 
@@ -510,12 +525,10 @@ public class OrderServiceImpl implements OrderService {
                 // 释放座位
                 seatMapper.releaseSeatsByOrderId(order.getId());
 
-                // 更新场次已售数量
+                // 原子减少场次已售数量
                 Schedule schedule = scheduleMapper.selectById(order.getScheduleId());
                 if (schedule != null) {
-                    schedule.setSoldCount(Math.max(0,
-                        (schedule.getSoldCount() != null ? schedule.getSoldCount() : 0) - order.getSeatCount()));
-                    scheduleMapper.updateById(schedule);
+                    scheduleMapper.decrementSoldCount(schedule.getId(), order.getSeatCount());
                 }
 
                 // 更新订单状态为已过期
@@ -627,5 +640,55 @@ public class OrderServiceImpl implements OrderService {
             }
         }
         return order;
+    }
+
+    /**
+     * 批量填充订单关联信息（避免N+1查询）
+     * 一次性查询所有关联的影片、影厅、场次，然后在内存中映射
+     *
+     * @param orders 订单列表
+     */
+    private void batchFillOrderInfo(List<Order> orders) {
+        if (orders == null || orders.isEmpty()) {
+            return;
+        }
+
+        // 收集所有关联ID
+        List<Long> movieIds = orders.stream()
+            .map(Order::getMovieId).filter(id -> id != null).distinct().collect(Collectors.toList());
+        List<Long> hallIds = orders.stream()
+            .map(Order::getHallId).filter(id -> id != null).distinct().collect(Collectors.toList());
+        List<Long> scheduleIds = orders.stream()
+            .map(Order::getScheduleId).filter(id -> id != null).distinct().collect(Collectors.toList());
+
+        // 批量查询
+        Map<Long, Movie> movieMap = movieIds.isEmpty() ? Collections.emptyMap()
+            : movieMapper.selectBatchIds(movieIds).stream()
+                .collect(Collectors.toMap(Movie::getId, m -> m));
+        Map<Long, Hall> hallMap = hallIds.isEmpty() ? Collections.emptyMap()
+            : hallMapper.selectBatchIds(hallIds).stream()
+                .collect(Collectors.toMap(Hall::getId, h -> h));
+        Map<Long, Schedule> scheduleMap = scheduleIds.isEmpty() ? Collections.emptyMap()
+            : scheduleMapper.selectBatchIds(scheduleIds).stream()
+                .collect(Collectors.toMap(Schedule::getId, s -> s));
+
+        // 填充每个订单的关联信息
+        for (Order order : orders) {
+            if (order.getMovieId() != null) {
+                Movie movie = movieMap.get(order.getMovieId());
+                if (movie != null) order.setMovieName(movie.getMovieName());
+            }
+            if (order.getHallId() != null) {
+                Hall hall = hallMap.get(order.getHallId());
+                if (hall != null) order.setHallName(hall.getHallName());
+            }
+            if (order.getScheduleId() != null) {
+                Schedule schedule = scheduleMap.get(order.getScheduleId());
+                if (schedule != null) {
+                    order.setStartTime(schedule.getStartTime());
+                    order.setEndTime(schedule.getEndTime());
+                }
+            }
+        }
     }
 }

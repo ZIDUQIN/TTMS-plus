@@ -14,10 +14,14 @@ html {
 
 body {
   font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB',
-    'Microsoft YaHei', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+  line-height: 1.6;
+  font-weight: 400;
   transition: background-color 0.3s ease, color 0.3s ease;
+  /* Improve text rendering clarity */
+  text-rendering: optimizeLegibility;
 }
 
 a {
@@ -43,15 +47,15 @@ img {
   --bg-card: #ffffff;
   --bg-hover: #f0f2f5;
   --text-primary: #1a1a1a;
-  --text-secondary: #4a4a4a;
-  --text-muted: #6b6b6b;
+  --text-secondary: #222222;
+  --text-muted: #444444;
   --color-primary: #3370ff;
   --color-primary-light: #5c8fff;
   --color-primary-dark: #1e4fcc;
   --color-success: #52b818;
   --color-warning: #e08c00;
   --color-danger: #e03a3a;
-  --color-info: #6b6b6b;
+  --color-info: #444444;
   --color-accent: #ff6b35;
   --color-accent-light: #ff8c5a;
   --color-gold: #b8860b;
@@ -75,21 +79,21 @@ img {
   --bg-sidebar: #0f0f23;
   --bg-card: #1e2a4a;
   --bg-hover: #253558;
-  --text-primary: #e8e8f0;
-  --text-secondary: #b0b5c8;
-  --text-muted: #9a9fb5;
+  --text-primary: #f0f0f8;
+  --text-secondary: #c8cdd8;
+  --text-muted: #b4b9c8;
   --color-primary: #e94560;
   --color-primary-light: #ff6b81;
   --color-primary-dark: #c23152;
   --color-success: #2ed573;
   --color-warning: #ffa502;
   --color-danger: #ff4757;
-  --color-info: #7a8096;
+  --color-info: #b0b8cc;
   --color-accent: #d4a853;
   --color-accent-light: #f0c674;
   --color-gold: #d4a853;
-  --border-color: #2a3a5c;
-  --border-light: #223358;
+  --border-color: #3d4f78;
+  --border-light: #2e3d5c;
   --shadow-light: 0 2px 12px rgba(0, 0, 0, 0.3);
   --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.4);
   --shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -108,21 +112,21 @@ img {
   --bg-sidebar: #190e3d;
   --bg-card: #3a2588;
   --bg-hover: #4a30a0;
-  --text-primary: #f0e8ff;
-  --text-secondary: #c8b8f0;
-  --text-muted: #b8a8e0;
+  --text-primary: #f5f0ff;
+  --text-secondary: #dcd0f8;
+  --text-muted: #ccc0e8;
   --color-primary: #e040fb;
   --color-primary-light: #f062ff;
   --color-primary-dark: #c020d8;
   --color-success: #69f0ae;
   --color-warning: #ffab40;
   --color-danger: #ff5252;
-  --color-info: #9888c8;
+  --color-info: #c0b8f0;
   --color-accent: #ff6ec7;
   --color-accent-light: #ff90d8;
   --color-gold: #ffd54f;
-  --border-color: #4a3588;
-  --border-light: #3a2a70;
+  --border-color: #5e48a0;
+  --border-light: #4a3888;
   --shadow-light: 0 2px 12px rgba(0, 0, 0, 0.3);
   --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.35);
   --shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.45);
@@ -143,14 +147,96 @@ body {
 /* Override Element Plus variables */
 :root {
   --el-color-primary: var(--color-primary);
+  --el-color-info: var(--color-info);
   --el-bg-color: var(--bg-primary);
   --el-bg-color-page: var(--bg-secondary);
+  --el-bg-color-overlay: var(--bg-card);
   --el-text-color-primary: var(--text-primary);
   --el-text-color-regular: var(--text-secondary);
+  --el-text-color-secondary: var(--text-muted);
+  --el-text-color-placeholder: var(--text-muted);
+  --el-text-color-disabled: var(--text-muted);
   --el-border-color: var(--border-color);
   --el-border-color-light: var(--border-light);
+  --el-border-color-lighter: var(--border-light);
   --el-fill-color-blank: var(--bg-card);
+  --el-fill-color-light: var(--bg-hover);
+  --el-fill-color-lighter: var(--bg-secondary);
   --el-border-radius-base: var(--radius-md);
+  --el-font-size-base: 14px;
+}
+
+/* Ensure dropdown menus have proper contrast */
+.el-dropdown-menu {
+  background-color: var(--bg-card) !important;
+}
+
+.el-dropdown-menu__item {
+  color: var(--text-primary) !important;
+}
+
+.el-dropdown-menu__item:hover {
+  background-color: var(--bg-hover) !important;
+  color: var(--color-primary) !important;
+}
+
+/* Ensure popover/tooltip text is readable */
+.el-popover,
+.el-tooltip__content {
+  color: var(--text-primary);
+}
+
+/* Disabled button text must be visible */
+.el-button.is-disabled,
+.el-button.is-disabled:hover {
+  color: var(--text-muted) !important;
+}
+
+/* Improve readability of small text globally */
+small,
+.small,
+.el-table {
+  font-size: 14px;
+}
+
+/* Better table header readability */
+.el-table th.el-table__cell {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+/* Better form label readability */
+.el-form-item__label {
+  font-weight: 500;
+  color: var(--text-primary) !important;
+}
+
+/* Ensure dialog titles are clear */
+.el-dialog__title {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Better dropdown and menu item readability */
+.el-dropdown-menu__item,
+.el-menu-item {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* Ensure input text is readable */
+.el-input__inner {
+  color: var(--text-primary);
+}
+
+.el-input__inner::placeholder {
+  color: var(--text-muted);
+}
+
+/* Tag text readability */
+.el-tag {
+  font-weight: 500;
 }
 
 /* Scrollbar styling */

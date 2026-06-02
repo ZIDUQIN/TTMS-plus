@@ -20,27 +20,21 @@
           </el-table-column>
           <el-table-column label="状态" width="100">
             <template #default="{ row }">
-              <el-tag :type="row.status === 'DISABLED' ? 'danger' : 'success'" size="small">
-                {{ row.status === 'DISABLED' ? '已禁用' : '正常' }}
+              <el-tag :type="row.status === 1 ? 'danger' : 'success'" size="small">
+                {{ row.status === 1 ? '已禁用' : '正常' }}
               </el-tag>
             </template>
           </el-table-column>
           <el-table-column label="创建时间" width="160">
             <template #default="{ row }">{{ formatDateTime(row.createTime || row.createdAt) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="260" fixed="right">
+          <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
               <el-button size="small" text type="primary" @click="openEdit(row)">编辑</el-button>
               <el-button size="small" text type="warning" @click="handleResetPwd(row)">重置密码</el-button>
-              <el-button
-                size="small"
-                text
-                :type="row.status === 'DISABLED' ? 'success' : 'warning'"
-                @click="handleToggleStatus(row)"
-              >
-                {{ row.status === 'DISABLED' ? '启用' : '禁用' }}
+              <el-button size="small" text :type="row.status === 1 ? 'success' : 'warning'" @click="handleToggleStatus(row)">
+                {{ row.status === 1 ? '启用' : '禁用' }}
               </el-button>
-              <el-button size="small" text type="danger" @click="handleDelete(row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -180,7 +174,7 @@ async function handleResetPwd(row) {
 }
 
 async function handleToggleStatus(row) {
-  const action = row.status === 'DISABLED' ? '启用' : '禁用'
+  const action = row.status === 1 ? '启用' : '禁用'
   try {
     await ElMessageBox.confirm(`确定要${action}员工"${row.realName}"吗？`, `${action}确认`, {
       confirmButtonText: `确定${action}`, cancelButtonText: '取消', type: 'warning'
@@ -188,23 +182,8 @@ async function handleToggleStatus(row) {
   } catch { return }
   try {
     await toggleEmployeeStatus(row.id)
-    row.status = row.status === 'DISABLED' ? 'NORMAL' : 'DISABLED'
+    row.status = row.status === 1 ? 0 : 1
     ElMessage.success(`员工已${action}`)
-  } catch (err) { /* handled */ }
-}
-
-async function handleDelete(row) {
-  try {
-    await ElMessageBox.confirm(`确定要删除员工"${row.realName}"吗？此操作不可恢复。`, '删除确认', {
-      confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning'
-    })
-  } catch { return }
-  // Note: There's no dedicated delete employee API listed; we use toggle status as delete
-  try {
-    await toggleEmployeeStatus(row.id)
-    row.status = 'DELETED'
-    fetchEmployees()
-    ElMessage.success('员工已删除')
   } catch (err) { /* handled */ }
 }
 

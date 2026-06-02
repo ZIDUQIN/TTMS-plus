@@ -1,10 +1,20 @@
 import request from './index'
 
-// Get revenue statistics
-export function getRevenueStats() {
+// Get revenue statistics (summary)
+export function getRevenueStats(startDate, endDate) {
   return request({
     url: '/admin/statistics/revenue',
-    method: 'get'
+    method: 'get',
+    params: { startDate, endDate }
+  })
+}
+
+// Get daily revenue data (for trend chart)
+export function getDailyRevenue(startDate, endDate) {
+  return request({
+    url: '/admin/statistics/revenue/daily',
+    method: 'get',
+    params: { startDate, endDate }
   })
 }
 
@@ -24,11 +34,11 @@ export function getMonthlyStats() {
   })
 }
 
-// Export statistics
-export function exportStatistics() {
+// Export statistics - returns file path, open in browser to download
+export function exportStatistics(startDate, endDate) {
   return request({
     url: '/admin/statistics/export',
     method: 'get',
-    responseType: 'blob'
+    params: { startDate, endDate }
   })
 }

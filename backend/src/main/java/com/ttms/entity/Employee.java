@@ -1,6 +1,7 @@
 package com.ttms.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -19,7 +20,8 @@ public class Employee {
     /** 用户名 */
     private String username;
 
-    /** 密码(BCrypt加密) */
+    /** 密码(BCrypt加密) - 仅写入，序列化时隐藏防止泄露 */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     /** 姓名 */
@@ -42,4 +44,11 @@ public class Employee {
 
     @TableLogic
     private Integer deleted;
+
+    /* ===== 非数据库字段 ===== */
+    @TableField(exist = false)
+    private String roleName;
+
+    @TableField(exist = false)
+    private String roleCode;
 }

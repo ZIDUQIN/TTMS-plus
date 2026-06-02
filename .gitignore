@@ -1,4 +1,8 @@
 node_modules/
 .vscode/
+.idea/
 .env
 *.log
+target/
+dist/
+uploads/

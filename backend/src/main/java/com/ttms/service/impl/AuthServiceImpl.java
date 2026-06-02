@@ -52,12 +52,8 @@ public class AuthServiceImpl implements AuthService {
         // 管理端登录：查询employee表
         if ("ADMIN".equalsIgnoreCase(loginType)) {
             Employee employee = employeeMapper.findByUsername(username);
-            if (employee == null) {
+            if (employee == null || employee.getStatus() == null || employee.getStatus() == 1) {
                 throw new BusinessException(401, "用户名或密码错误");
-            }
-            // 检查账号是否已被禁用
-            if (employee.getStatus() != null && employee.getStatus() == 1) {
-                throw new BusinessException(403, "账号已被禁用，请联系管理员");
             }
             // 验证密码
             if (!passwordEncoder.matches(password, employee.getPassword())) {
@@ -86,14 +82,10 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         // 用户端登录：查询user表
-        } else {
+        } else if ("USER".equalsIgnoreCase(loginType)) {
             User user = userMapper.findByUsername(username);
-            if (user == null) {
+            if (user == null || user.getStatus() == null || user.getStatus() == 1) {
                 throw new BusinessException(401, "用户名或密码错误");
-            }
-            // 检查账号是否已被禁用
-            if (user.getStatus() != null && user.getStatus() == 1) {
-                throw new BusinessException(403, "账号已被禁用，请联系管理员");
             }
             // 验证密码
             if (!passwordEncoder.matches(password, user.getPassword())) {
@@ -117,6 +109,8 @@ public class AuthServiceImpl implements AuthService {
                 .permissions(List.of("movie:view", "order:create", "order:view",
                     "order:reschedule", "order:refund", "theme:set"))
                 .build();
+        } else {
+            throw new BusinessException(400, "登录类型无效，请选择用户登录或管理员登录");
         }
     }
 
@@ -132,12 +126,12 @@ public class AuthServiceImpl implements AuthService {
         // 检查用户名是否已被占用
         User existingUser = userMapper.findByUsername(request.getUsername());
         if (existingUser != null) {
-            throw new BusinessException("用户名已存在，请更换用户名");
+            throw new BusinessException(400, "用户名已存在，请更换用户名");
         }
         // 检查员工表是否也有同名用户（防止用户名混淆）
         Employee existingEmployee = employeeMapper.findByUsername(request.getUsername());
         if (existingEmployee != null) {
-            throw new BusinessException("用户名已存在，请更换用户名");
+            throw new BusinessException(400, "用户名已存在，请更换用户名");
         }
 
         User user = new User();

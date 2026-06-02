@@ -1,6 +1,7 @@
 package com.ttms.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -16,7 +17,8 @@ public class User {
     /** 用户名 */
     private String username;
 
-    /** 密码(BCrypt加密) */
+    /** 密码(BCrypt加密) - 仅写入，序列化时隐藏防止泄露 */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     /** 手机号 */

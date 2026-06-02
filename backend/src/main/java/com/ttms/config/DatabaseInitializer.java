@@ -191,10 +191,7 @@ public class DatabaseInitializer implements CommandLineRunner {
             log.info("影片表已有 {} 条数据，跳过电影数据初始化", existing.size());
             return;
         }
-        log.info("影片数据不足5条，开始导入初始热门电影...");
-
-        // 删除旧的示例场次和座位数据
-        movieMapper.delete(null);
+        log.info("影片数据不足5条，开始导入初始热门电影（跳过已存在的影片）...");
 
         Movie[] movies = {
             createMovie("流浪地球3", "科幻,冒险", 150, "吴京,刘德华,李雪健", "郭帆", "太阳即将毁灭，人类在地球表面建造出巨大的推进器，开启长达2500年的流浪之旅。", "2026-06-01", 59.90, 1, 1, 100, "中国", "国语", 8.5),
@@ -225,9 +222,16 @@ public class DatabaseInitializer implements CommandLineRunner {
         };
 
         for (Movie movie : movies) {
-            movieMapper.insert(movie);
+            // 检查影片是否已存在，避免重复插入
+            Movie existingMovie = movieMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Movie>()
+                    .eq(Movie::getMovieName, movie.getMovieName())
+            );
+            if (existingMovie == null) {
+                movieMapper.insert(movie);
+            }
         }
-        log.info("已成功导入 {} 部热门电影数据", movies.length);
+        log.info("已成功导入初始热门电影数据");
     }
 
     private Movie createMovie(String movieName, String genre, int duration, String actors, String director,

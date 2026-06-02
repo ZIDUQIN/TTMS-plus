@@ -5,6 +5,7 @@ import com.ttms.entity.Schedule;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -58,4 +59,26 @@ public interface ScheduleMapper extends BaseMapper<Schedule> {
             "WHERE s.start_time > NOW() AND s.status = 1 AND s.deleted = 0 " +
             "ORDER BY s.start_time ASC")
     List<Schedule> selectUpcoming();
+
+    /**
+     * 原子增加已售座位数（避免竞态条件）
+     * UPDATE schedule SET sold_count = sold_count + #{count} WHERE id = #{id}
+     *
+     * @param id    场次ID
+     * @param count 增加数量（可以为负数来减少）
+     * @return 影响行数
+     */
+    @Update("UPDATE schedule SET sold_count = sold_count + #{count} WHERE id = #{id}")
+    int incrementSoldCount(@Param("id") Long id, @Param("count") int count);
+
+    /**
+     * 原子减少已售座位数
+     * UPDATE schedule SET sold_count = sold_count - #{count} WHERE id = #{id} AND sold_count >= #{count}
+     *
+     * @param id    场次ID
+     * @param count 减少数量
+     * @return 影响行数
+     */
+    @Update("UPDATE schedule SET sold_count = sold_count - #{count} WHERE id = #{id} AND sold_count >= #{count}")
+    int decrementSoldCount(@Param("id") Long id, @Param("count") int count);
 }

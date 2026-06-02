@@ -6,7 +6,7 @@
       <template v-if="movie">
         <!-- Backdrop + Info -->
         <div class="detail-hero">
-          <div class="detail-hero-bg" :style="{ backgroundImage: `url(${movie.poster || ''})` }"></div>
+          <div class="detail-hero-bg" :style="{ backgroundImage: `url(${encodeURI(movie.poster || '')})` }"></div>
           <div class="detail-hero-inner">
             <div class="poster-col">
               <img
@@ -211,6 +211,8 @@ onMounted(fetchData)
   margin: 0 -24px;
   padding: 40px 24px;
   overflow: hidden;
+  /* Fallback dark background when no poster image is available */
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
 }
 
 .detail-hero-bg {
@@ -354,7 +356,7 @@ onMounted(fetchData)
 }
 
 .sch-weekday {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   margin-top: 2px;
 }

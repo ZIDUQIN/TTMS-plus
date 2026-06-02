@@ -115,9 +115,9 @@ function getSeatClass(row, col) {
   if (props.selectedSeats.includes(key)) return 'selected'
   // Check seat map status
   const status = props.seatStatusMap[key]
-  if (status === 'OCCUPIED' || status === 'SOLD' || status === 'sold') return 'occupied'
-  if (status === 'LOCKED' || status === 'locked') return 'locked'
-  if (status === 'AISLE' || status === 'aisle') return 'aisle'
+  if (status === 'OCCUPIED' || status === 'SOLD' || status === 'sold' || status === 2) return 'occupied'
+  if (status === 'LOCKED' || status === 'locked' || status === 1) return 'locked'
+  if (status === 'AISLE' || status === 'aisle' || status === 3 || status === 'UNAVAILABLE') return 'aisle'
   return 'available'
 }
 
@@ -180,7 +180,7 @@ function handleSeatClick(row, col) {
 .row-label {
   width: 20px;
   text-align: center;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-muted);
   flex-shrink: 0;
@@ -249,7 +249,7 @@ function handleSeatClick(row, col) {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
 }
 
