@@ -46,8 +46,9 @@ public class SecurityConfig {
             // URL授权规则配置
             // 策略：仅保护API路径，非API请求（静态资源、Vue Router SPA路由）全部放行
             .authorizeHttpRequests(auth -> auth
-                // ========== 认证相关接口：所有人可访问 ==========
-                .requestMatchers("/api/auth/**").permitAll()
+                // ========== 认证相关接口 ==========
+                .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
+                .requestMatchers("/api/auth/change-password").authenticated()
 
                 // ========== 影片信息：GET公开，管理操作需管理员 ==========
                 .requestMatchers(HttpMethod.GET, "/api/movies/**").permitAll()

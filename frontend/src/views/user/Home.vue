@@ -130,7 +130,7 @@ async function fetchMovies(keyword) {
       const res = await searchMovies(keyword)
       movies.value = res.data || []
     } else {
-      const res = await getMovieList()
+      const res = await getMovieList({ page: 1, size: 100 })
       movies.value = res.data?.records || res.data || []
     }
   } catch (err) {

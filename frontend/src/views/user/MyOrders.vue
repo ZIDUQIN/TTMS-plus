@@ -85,7 +85,7 @@
             </div>
 
             <div class="order-price">
-              <span class="price">${{ order.totalAmount || order.totalPrice || '--' }}</span>
+              <span class="price">¥{{ order.totalAmount || order.totalPrice || '--' }}</span>
             </div>
           </div>
 
@@ -123,7 +123,7 @@
               <el-descriptions-item label="影厅">{{ order.hallName }}</el-descriptions-item>
               <el-descriptions-item label="场次时间">{{ formatDateTime(order.scheduleStartTime || order.startTime) }}</el-descriptions-item>
               <el-descriptions-item label="座位">{{ formatSeats(order) }}</el-descriptions-item>
-              <el-descriptions-item label="金额">${{ order.totalAmount || order.totalPrice }}</el-descriptions-item>
+              <el-descriptions-item label="金额">¥{{ order.totalAmount || order.totalPrice }}</el-descriptions-item>
               <el-descriptions-item label="创建时间">{{ formatDateTime(order.createTime || order.createdAt) }}</el-descriptions-item>
             </el-descriptions>
           </div>

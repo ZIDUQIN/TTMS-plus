@@ -20,7 +20,7 @@
             <div class="stat-mini">
               <el-icon :size="32" color="#409eff"><Money /></el-icon>
               <div class="stat-mini-text">
-                <span class="stat-mini-num">${{ todayRevenue }}</span>
+                <span class="stat-mini-num">¥{{ todayRevenue }}</span>
                 <span class="stat-mini-label">今日收入</span>
               </div>
             </div>
@@ -63,7 +63,7 @@
                 <el-table-column prop="orderNo" label="订单号" min-width="160" show-overflow-tooltip />
                 <el-table-column prop="movieName" label="影片" min-width="120" show-overflow-tooltip />
                 <el-table-column label="金额" width="100">
-                  <template #default="{ row }">${{ row.totalAmount || row.totalPrice }}</template>
+                  <template #default="{ row }">¥{{ row.totalAmount || row.totalPrice }}</template>
                 </el-table-column>
                 <el-table-column label="状态" width="100">
                   <template #default="{ row }">

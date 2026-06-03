@@ -39,7 +39,7 @@
             <template #default="{ row }">{{ formatSeats(row) }}</template>
           </el-table-column>
           <el-table-column label="金额" width="90">
-            <template #default="{ row }">${{ row.totalAmount || row.totalPrice }}</template>
+            <template #default="{ row }">¥{{ row.totalAmount || row.totalPrice }}</template>
           </el-table-column>
           <el-table-column label="状态" width="90">
             <template #default="{ row }">
@@ -72,7 +72,7 @@
             <el-table-column prop="name" label="影片名称" />
             <el-table-column prop="genre" label="类型" width="80" />
             <el-table-column label="票价" width="80">
-              <template #default="{ row }">${{ row.price }}</template>
+              <template #default="{ row }">¥{{ row.price }}</template>
             </el-table-column>
           </el-table>
         </div>

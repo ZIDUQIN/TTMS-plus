@@ -79,7 +79,14 @@ public class MovieServiceImpl implements MovieService {
             movie.setIsHot(0);   // 默认不热门
         }
         if (movie.getSortOrder() == null) {
-            movie.setSortOrder(0); // 默认排序权重
+            // 新添加的影片排序权重设为当前最大权重+1，确保出现在列表最前面
+            Movie maxSort = movieMapper.selectOne(
+                new LambdaQueryWrapper<Movie>()
+                    .orderByDesc(Movie::getSortOrder)
+                    .last("LIMIT 1")
+            );
+            int maxSortOrder = (maxSort != null && maxSort.getSortOrder() != null) ? maxSort.getSortOrder() : 0;
+            movie.setSortOrder(maxSortOrder + 1);
         }
 
         movieMapper.insert(movie);

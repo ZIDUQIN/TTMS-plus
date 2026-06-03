@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TTMS - 电影院综合管理系统</title>
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <!-- 同步应用主题，防止页面加载闪烁 -->
+  <script>
+    (function() {
+      var theme = localStorage.getItem('ttms-theme') || 'white';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
 </head>
 <body>
   <div id="app"></div>

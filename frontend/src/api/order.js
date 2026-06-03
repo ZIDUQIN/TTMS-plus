@@ -100,10 +100,11 @@ export function getScheduleSeats(scheduleId) {
 }
 
 // Get all schedules (admin)
-export function getScheduleList() {
+export function getScheduleList(params = {}) {
   return request({
     url: '/schedules/list',
-    method: 'get'
+    method: 'get',
+    params: { page: params.page || 1, size: params.size || 10 }
   })
 }
 
@@ -136,10 +137,11 @@ export function deleteSchedule(id) {
 // ===== Hall APIs =====
 
 // Get hall list (admin)
-export function getHallList() {
+export function getHallList(params = {}) {
   return request({
     url: '/admin/halls/list',
-    method: 'get'
+    method: 'get',
+    params: { page: params.page || 1, size: params.size || 10 }
   })
 }
 
@@ -172,10 +174,11 @@ export function deleteHall(id) {
 // ===== Employee APIs =====
 
 // Get employee list (admin)
-export function getEmployeeList() {
+export function getEmployeeList(params = {}) {
   return request({
     url: '/admin/employees/list',
-    method: 'get'
+    method: 'get',
+    params: { page: params.page || 1, size: params.size || 10 }
   })
 }
 
@@ -242,9 +245,13 @@ export function setSystemTheme(data) {
 }
 
 // Get system logs
-export function getSystemLogs() {
+export function getSystemLogs(params = {}) {
   return request({
     url: '/admin/system/logs',
-    method: 'get'
+    method: 'get',
+    params: {
+      page: params.page || 1,
+      size: params.size || 20
+    }
   })
 }

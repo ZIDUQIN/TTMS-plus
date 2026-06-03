@@ -133,7 +133,7 @@ const rules = {
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 4, max: 30, message: '密码长度在4到30个字符之间', trigger: 'blur' }
+    { min: 6, max: 30, message: '密码长度在6到30个字符之间', trigger: 'blur' }
   ]
 }
 

@@ -26,7 +26,7 @@
               <el-icon :size="24"><Money /></el-icon>
             </div>
             <div class="stat-info">
-              <span class="stat-value">${{ summary.totalRevenue }}</span>
+              <span class="stat-value">¥{{ summary.totalRevenue }}</span>
               <span class="stat-label">总营收</span>
             </div>
           </div>
@@ -48,7 +48,7 @@
               <el-icon :size="24"><TrendCharts /></el-icon>
             </div>
             <div class="stat-info">
-              <span class="stat-value">${{ summary.avgPrice }}</span>
+              <span class="stat-value">¥{{ summary.avgPrice }}</span>
               <span class="stat-label">平均票价</span>
             </div>
           </div>

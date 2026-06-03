@@ -39,7 +39,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * 这些路径对应的请求不会进行令牌解析
      */
     private static final List<String> SKIP_PATHS = List.of(
-        "/api/auth/**",              // 认证相关（登录、注册）
+        "/api/auth/login",           // 登录
+        "/api/auth/register",        // 注册
         "/api/schedules/query/**",    // 场次查询（公开浏览）
         "/uploads/**"                 // 静态资源文件
     );

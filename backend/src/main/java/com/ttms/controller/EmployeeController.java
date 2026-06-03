@@ -10,6 +10,7 @@ import com.ttms.mapper.EmployeeMapper;
 import com.ttms.mapper.RoleMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -171,6 +172,7 @@ public class EmployeeController {
      * @param params 包含newPassword字段的Map（可选，不传则重置为默认密码）
      * @return 操作结果
      */
+    @PreAuthorize("hasRole('ROLE_SUPER_ADMIN')")
     @PutMapping("/reset-password/{id}")
     public ApiResponse<String> resetPassword(@PathVariable Long id, @RequestBody(required = false) Map<String, String> params) {
         log.info("重置员工密码: id={}", id);
@@ -199,6 +201,7 @@ public class EmployeeController {
      * @param id 员工ID
      * @return 操作结果
      */
+    @PreAuthorize("hasRole('ROLE_SUPER_ADMIN')")
     @PutMapping("/toggle-status/{id}")
     public ApiResponse<String> toggleStatus(@PathVariable Long id) {
         log.info("切换员工状态: id={}", id);

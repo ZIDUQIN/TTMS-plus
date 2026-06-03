@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ttms.dto.ApiResponse;
 import com.ttms.entity.Movie;
 import com.ttms.service.MovieService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -35,7 +36,7 @@ public class MovieController {
      */
     @GetMapping("/list")
     public ApiResponse<Page<Movie>> list(@RequestParam(defaultValue = "1") int page,
-                                          @RequestParam(defaultValue = "10") int size,
+                                          @RequestParam(defaultValue = "100") int size,
                                           @RequestParam(required = false) Integer status) {
         log.debug("查询影片列表: page={}, size={}, status={}", page, size, status);
         Page<Movie> result = movieService.list(page, size, status);
@@ -91,7 +92,7 @@ public class MovieController {
      * @return 添加后的影片
      */
     @PostMapping("/add")
-    public ApiResponse<Movie> add(@RequestBody Movie movie) {
+    public ApiResponse<Movie> add(@Valid @RequestBody Movie movie) {
         log.info("添加影片: movieName={}", movie.getMovieName());
         Movie result = movieService.add(movie);
         return ApiResponse.success("影片添加成功", result);
@@ -105,7 +106,7 @@ public class MovieController {
      * @return 更新后的影片
      */
     @PutMapping("/update")
-    public ApiResponse<Movie> update(@RequestBody Movie movie) {
+    public ApiResponse<Movie> update(@Valid @RequestBody Movie movie) {
         log.info("更新影片: id={}, movieName={}", movie.getId(), movie.getMovieName());
         Movie result = movieService.update(movie);
         return ApiResponse.success("影片更新成功", result);

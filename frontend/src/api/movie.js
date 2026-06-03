@@ -1,10 +1,14 @@
 import request from './index'
 
 // Get movie list
-export function getMovieList() {
+export function getMovieList(params = {}) {
   return request({
     url: '/movies/list',
-    method: 'get'
+    method: 'get',
+    params: {
+      page: params.page || 1,
+      size: params.size || 10
+    }
   })
 }
 

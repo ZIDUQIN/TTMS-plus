@@ -103,6 +103,7 @@
               layout="total, prev, pager, next"
               background
               small
+              @current-change="handleLogPageChange"
             />
           </div>
         </div>
@@ -149,10 +150,7 @@ const logPageSize = ref(15)
 const logTotal = ref(0)
 
 // 使用computed确保分页切换时数据响应式更新
-const logs = computed(() => {
-  const start = (logPage.value - 1) * logPageSize.value
-  return allLogs.value.slice(start, start + logPageSize.value)
-})
+const logs = computed(() => allLogs.value)
 
 function formatDateTime(s) {
   if (!s) return '--'
@@ -206,15 +204,19 @@ async function fetchConfig() {
 async function fetchLogs() {
   logLoading.value = true
   try {
-    const res = await getSystemLogs()
-    allLogs.value = res.data || []
-    logTotal.value = allLogs.value.length
-    logPage.value = 1  // 重置到第一页
+    const res = await getSystemLogs({ page: logPage.value, size: logPageSize.value })
+    allLogs.value = res.data?.records || []
+    logTotal.value = res.data?.total || 0
   } catch (err) {
     allLogs.value = []
     logTotal.value = 0
   }
   finally { logLoading.value = false }
+}
+
+function handleLogPageChange(page) {
+  logPage.value = page
+  fetchLogs()
 }
 
 onMounted(() => {

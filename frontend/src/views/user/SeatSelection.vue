@@ -62,7 +62,7 @@
             </div>
             <div class="info-row">
               <span class="info-label">票价：</span>
-              <span class="price-highlight">${{ schedule.price || (movie && movie.price) || '--' }}</span>
+              <span class="price-highlight">¥{{ schedule.price || (movie && movie.price) || '--' }}</span>
             </div>
           </div>
 
@@ -90,7 +90,7 @@
             </div>
             <div v-if="selectedSeats.length > 0" class="price-summary">
               <span>合计：</span>
-              <span class="total-price">${{ totalPrice }}</span>
+              <span class="total-price">¥{{ totalPrice }}</span>
             </div>
           </div>
 
@@ -140,7 +140,7 @@
           </div>
           <div class="pay-row pay-total">
             <span>应付金额</span>
-            <span class="pay-price">${{ totalPrice }}</span>
+            <span class="pay-price">¥{{ totalPrice }}</span>
           </div>
         </div>
         <div class="payment-methods">
@@ -153,7 +153,7 @@
       <template #footer>
         <el-button @click="paymentVisible = false">取消</el-button>
         <el-button type="primary" :loading="paying" @click="handlePay">
-          确认支付 ${{ totalPrice }}
+          确认支付 ¥{{ totalPrice }}
         </el-button>
       </template>
     </el-dialog>

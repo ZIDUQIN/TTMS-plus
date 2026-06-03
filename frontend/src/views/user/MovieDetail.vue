@@ -42,7 +42,7 @@
                 </div>
                 <div class="info-item">
                   <span class="info-label">票价：</span>
-                  <span class="price-text">${{ movie.price || '--' }}</span>
+                  <span class="price-text">¥{{ movie.price || '--' }}</span>
                 </div>
               </div>
               <div v-if="movie.description" class="description">

@@ -20,7 +20,7 @@
             <template #default="{ row }">{{ formatDateTime(row.endTime) }}</template>
           </el-table-column>
           <el-table-column label="票价" width="80">
-            <template #default="{ row }">${{ row.price || '--' }}</template>
+            <template #default="{ row }">¥{{ row.price || '--' }}</template>
           </el-table-column>
           <el-table-column label="已售/总座位" width="120">
             <template #default="{ row }">
@@ -39,6 +39,16 @@
             </template>
           </el-table-column>
         </el-table>
+        <el-empty v-if="!loading && schedules.length === 0" description="暂无场次数据" :image-size="80" />
+        <div style="display: flex; justify-content: flex-end; padding: 16px 0;" v-if="total > pageSize">
+          <el-pagination
+            v-model:current-page="currentPage"
+            :page-size="pageSize"
+            :total="total"
+            layout="total, prev, pager, next, jumper"
+            @current-change="handlePageChange"
+          />
+        </div>
       </div>
 
       <!-- Add/Edit Dialog -->
@@ -110,6 +120,9 @@ const isEdit = ref(false)
 const editingId = ref(null)
 const submitting = ref(false)
 const formRef = ref(null)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const form = reactive({
   movieId: null, hallId: null, startTime: '', endTime: '', price: 0
@@ -216,17 +229,23 @@ async function handleDelete(row) {
 async function fetchSchedules() {
   loading.value = true
   try {
-    const res = await getScheduleList()
+    const res = await getScheduleList({ page: currentPage.value, size: pageSize.value })
     schedules.value = res.data?.records || res.data || []
-  } catch (err) { schedules.value = [] }
+    total.value = res.data?.total || 0
+  } catch (err) { schedules.value = []; total.value = 0 }
   finally { loading.value = false }
 }
 
 async function fetchMovies() {
   try {
-    const res = await getMovieList()
+    const res = await getMovieList({ page: 1, size: 100 })
     movies.value = res.data?.records || res.data || []
   } catch (err) { movies.value = [] }
+
+function handlePageChange(page) {
+  currentPage.value = page
+  fetchSchedules()
+}
 }
 
 async function fetchHalls() {

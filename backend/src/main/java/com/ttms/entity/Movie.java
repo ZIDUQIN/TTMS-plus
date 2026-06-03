@@ -2,6 +2,8 @@ package com.ttms.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,13 +19,16 @@ public class Movie {
     private Long id;
 
     /** 片名 */
+    @NotBlank(message = "影片名称不能为空")
     @JsonProperty("name")
     private String movieName;
 
     /** 类型(逗号分隔) */
+    @NotBlank(message = "影片类型不能为空")
     private String genre;
 
     /** 时长(分钟) */
+    @NotNull(message = "影片时长不能为空")
     private Integer duration;
 
     /** 主演 */

@@ -101,7 +101,8 @@ const routes = [
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
-    redirect: '/home'
+    component: () => import('@/views/NotFound.vue'),
+    meta: { title: '404', public: true }
   }
 ]
 

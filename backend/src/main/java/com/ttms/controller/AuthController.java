@@ -99,7 +99,7 @@ public class AuthController {
     private Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("用户未登录");
+            throw new com.ttms.exception.BusinessException(401, "请先登录");
         }
         return Long.valueOf(authentication.getPrincipal().toString());
     }

@@ -481,12 +481,18 @@ public class ScheduleServiceImpl implements ScheduleService {
                     schedule.setHallName(hall.getHallName());
                     schedule.setHallRowCount(hall.getRowCount());
                     schedule.setHallColCount(hall.getColCount());
-                    // 计算可用座位数：总座位 - 已售 - 不可用座位
+                    // 计算可用座位数：总座位 - 已售 - 已锁定 - 不可用座位
                     int totalSeats = (hall.getRowCount() != null ? hall.getRowCount() : 0)
                                    * (hall.getColCount() != null ? hall.getColCount() : 0);
                     int disabledCount = countDisabledSeats(hall.getSeatLayout());
                     int soldCount = schedule.getSoldCount() != null ? schedule.getSoldCount() : 0;
-                    schedule.setAvailableSeats(Math.max(0, totalSeats - disabledCount - soldCount));
+                    // 同时查询已锁定（status=1）但未支付的座位数
+                    int lockedCount = seatMapper.selectCount(
+                        new LambdaQueryWrapper<Seat>()
+                            .eq(Seat::getScheduleId, schedule.getId())
+                            .eq(Seat::getStatus, 1)
+                    ).intValue();
+                    schedule.setAvailableSeats(Math.max(0, totalSeats - disabledCount - soldCount - lockedCount));
                 }
             }
         }

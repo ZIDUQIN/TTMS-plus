@@ -12,7 +12,7 @@
       </div>
 
       <div class="card">
-        <el-table :data="filteredMovies" v-loading="loading" stripe>
+        <el-table :data="movies" v-loading="loading" stripe>
           <el-table-column label="海报" width="90">
             <template #default="{ row }">
               <img :src="row.poster || defaultPoster" class="table-poster" @error="onImgError" />
@@ -23,7 +23,7 @@
           <el-table-column prop="duration" label="时长(分)" width="90" />
           <el-table-column prop="releaseDate" label="上映日期" width="120" />
           <el-table-column label="票价" width="80">
-            <template #default="{ row }">${{ row.price || '--' }}</template>
+            <template #default="{ row }">¥{{ row.price || '--' }}</template>
           </el-table-column>
           <el-table-column label="状态" width="100">
             <template #default="{ row }">
@@ -47,6 +47,15 @@
             </template>
           </el-table-column>
         </el-table>
+        <div style="display: flex; justify-content: flex-end; padding: 16px 0;">
+          <el-pagination
+            v-model:current-page="currentPage"
+            :page-size="pageSize"
+            :total="total"
+            layout="total, prev, pager, next, jumper"
+            @current-change="handlePageChange"
+          />
+        </div>
       </div>
 
       <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑影片' : '添加影片'" width="620px" :close-on-click-modal="false">
@@ -134,8 +143,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive } from 'vue'
-import { getMovieList, addMovie, updateMovie, deleteMovie, uploadPoster } from '@/api/movie'
+import { ref, computed, onMounted, reactive, watch } from 'vue'
+import { getMovieList, searchMovies, addMovie, updateMovie, deleteMovie, uploadPoster } from '@/api/movie'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
 import NavBar from '@/components/NavBar.vue'
@@ -149,6 +158,9 @@ const editingId = ref(null)
 const submitting = ref(false)
 const uploading = ref(false)
 const formRef = ref(null)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 const genreOptions = ['动作', '喜剧', '爱情', '科幻', '恐怖', '动画', '剧情', '悬疑', '战争', '纪录片', '奇幻', '犯罪', '冒险']
 
@@ -164,12 +176,6 @@ const rules = {
   duration: [{ required: true, message: '请输入时长', trigger: 'blur' }],
   price: [{ required: true, message: '请输入票价', trigger: 'blur' }]
 }
-
-const filteredMovies = computed(() => {
-  if (!searchText.value) return movies.value
-  const kw = searchText.value.toLowerCase()
-  return movies.value.filter(m => m.name?.toLowerCase().includes(kw))
-})
 
 function resetForm() {
   Object.assign(form, { name: '', genre: '', duration: 90, price: 0, director: '', actors: '', country: '', language: '', releaseDate: '', rating: 0, poster: '', description: '', status: 1 })
@@ -249,8 +255,35 @@ async function handlePosterUpload(options) {
 
 async function fetchMovies() {
   loading.value = true
-  try { const res = await getMovieList(); movies.value = res.data?.records || res.data || [] } catch (err) { movies.value = [] } finally { loading.value = false }
+  try {
+    const keyword = searchText.value?.trim()
+    let res
+    if (keyword) {
+      res = await searchMovies(keyword)
+      movies.value = res.data || []
+      total.value = movies.value.length
+    } else {
+      res = await getMovieList({ page: currentPage.value, size: pageSize.value })
+      movies.value = res.data?.records || res.data || []
+      total.value = res.data?.total || 0
+    }
+  } catch (err) { movies.value = []; total.value = 0 } finally { loading.value = false }
 }
+
+function handlePageChange(page) {
+  currentPage.value = page
+  fetchMovies()
+}
+
+// 搜索防抖：输入停止300ms后自动触发服务端搜索
+let searchTimer = null
+watch(searchText, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    currentPage.value = 1
+    fetchMovies()
+  }, 300)
+})
 
 onMounted(fetchMovies)
 </script>

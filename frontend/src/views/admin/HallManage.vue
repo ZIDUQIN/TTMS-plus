@@ -199,7 +199,12 @@ function toggleLayoutSeat(rIdx, cIdx) {
 
 function getLayoutJSON() {
   if (disabledSeats.value.size === 0) return ''
-  return JSON.stringify([...disabledSeats.value])
+  // 过滤掉超出当前行列范围的无效条目（缩小行列后可能残留）
+  const validSeats = [...disabledSeats.value].filter(key => {
+    const [r, c] = key.split('-').map(Number)
+    return r >= 1 && r <= form.rowCount && c >= 1 && c <= form.colCount
+  })
+  return validSeats.length > 0 ? JSON.stringify(validSeats) : ''
 }
 
 function parseLayoutToSet(layoutJSON) {
