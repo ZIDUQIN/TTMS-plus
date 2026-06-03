@@ -94,14 +94,10 @@ public class SystemController {
      * @return 操作日志列表
      */
     @GetMapping("/api/admin/system/logs")
-    public ApiResponse<Page<Map<String, Object>>> getLogs(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        log.debug("查询操作日志: page={}, size={}", page, size);
-        Page<OrderLog> pageParam = new Page<>(page, size);
-        Page<OrderLog> logPage = orderLogMapper.selectPage(pageParam,
+    public ApiResponse<List<Map<String, Object>>> getLogs() {
+        log.debug("查询操作日志");
+        List<OrderLog> rawLogs = orderLogMapper.selectList(
             new LambdaQueryWrapper<OrderLog>().orderByDesc(OrderLog::getCreateTime));
-        List<OrderLog> rawLogs = logPage.getRecords();
 
         // 收集所有操作人ID，按类型分组批量查询
         List<Long> userIds = rawLogs.stream()
@@ -143,11 +139,7 @@ public class SystemController {
             return item;
         }).collect(java.util.stream.Collectors.toList());
 
-        Page<Map<String, Object>> resultPage = new Page<>(page, size);
-        resultPage.setRecords(result);
-        resultPage.setTotal(logPage.getTotal());
-        resultPage.setPages(logPage.getPages());
-        return ApiResponse.success(resultPage);
+        return ApiResponse.success(result);
     }
 
     /**
