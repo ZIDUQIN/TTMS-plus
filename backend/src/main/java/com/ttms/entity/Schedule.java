@@ -60,4 +60,7 @@ public class Schedule {
     private Integer hallRowCount;
     @TableField(exist = false)
     private Integer hallColCount;
+    /** 可用座位数（总座位 - 已售 - 不可用），前端用于显示余座和判断售罄 */
+    @TableField(exist = false)
+    private Integer availableSeats;
 }

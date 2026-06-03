@@ -159,7 +159,7 @@ function formatDateTime(dateStr) {
 async function fetchData() {
   try {
     const [orderResult, movieResult] = await Promise.allSettled([
-      getAdminOrders(),
+      getAdminOrders({ size: 999 }),
       getMovieList()
     ])
 
@@ -176,7 +176,12 @@ async function fetchData() {
         return createDate === todayStr
       })
       todayOrders.value = todayOrdersList.length
-      const revenue = todayOrdersList.reduce((sum, o) => sum + (Number(o.totalAmount || o.totalPrice) || 0), 0)
+      // 只统计已支付(1)和已完成(2)的订单营收，排除退票(4)、过期(5)、待支付(0)、已改签(3)
+      const paidOrders = todayOrdersList.filter(o => {
+        const s = o.status ?? o.orderStatus
+        return s === 1 || s === 2
+      })
+      const revenue = paidOrders.reduce((sum, o) => sum + (Number(o.totalAmount || o.totalPrice) || 0), 0)
       todayRevenue.value = isNaN(revenue) ? '0.00' : revenue.toFixed(2)
     }
 

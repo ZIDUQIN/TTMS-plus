@@ -40,6 +40,7 @@ public class OrderServiceImpl implements OrderService {
     private final SeatMapper seatMapper;
     private final MovieMapper movieMapper;
     private final HallMapper hallMapper;
+    private final UserMapper userMapper;
 
     /** 随机字符集，用于生成订单号的随机部分 */
     private static final String RANDOM_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -143,6 +144,7 @@ public class OrderServiceImpl implements OrderService {
 
         // 补充关联信息
         order.setMovieName(movie != null ? movie.getMovieName() : "");
+        order.setMoviePoster(movie != null ? movie.getPosterUrl() : null);
         order.setHallName(hall != null ? hall.getHallName() : "");
         order.setStartTime(schedule.getStartTime());
         order.setEndTime(schedule.getEndTime());
@@ -622,6 +624,7 @@ public class OrderServiceImpl implements OrderService {
             Movie movie = movieMapper.selectById(order.getMovieId());
             if (movie != null) {
                 order.setMovieName(movie.getMovieName());
+                order.setMoviePoster(movie.getPosterUrl());
             }
         }
         // 影厅信息
@@ -637,6 +640,13 @@ public class OrderServiceImpl implements OrderService {
             if (schedule != null) {
                 order.setStartTime(schedule.getStartTime());
                 order.setEndTime(schedule.getEndTime());
+            }
+        }
+        // 用户信息
+        if (order.getUserId() != null) {
+            User user = userMapper.selectById(order.getUserId());
+            if (user != null) {
+                order.setUsername(user.getUsername());
             }
         }
         return order;
@@ -660,6 +670,8 @@ public class OrderServiceImpl implements OrderService {
             .map(Order::getHallId).filter(id -> id != null).distinct().collect(Collectors.toList());
         List<Long> scheduleIds = orders.stream()
             .map(Order::getScheduleId).filter(id -> id != null).distinct().collect(Collectors.toList());
+        List<Long> userIds = orders.stream()
+            .map(Order::getUserId).filter(id -> id != null).distinct().collect(Collectors.toList());
 
         // 批量查询
         Map<Long, Movie> movieMap = movieIds.isEmpty() ? Collections.emptyMap()
@@ -671,12 +683,18 @@ public class OrderServiceImpl implements OrderService {
         Map<Long, Schedule> scheduleMap = scheduleIds.isEmpty() ? Collections.emptyMap()
             : scheduleMapper.selectBatchIds(scheduleIds).stream()
                 .collect(Collectors.toMap(Schedule::getId, s -> s));
+        Map<Long, User> userMap = userIds.isEmpty() ? Collections.emptyMap()
+            : userMapper.selectBatchIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
 
         // 填充每个订单的关联信息
         for (Order order : orders) {
             if (order.getMovieId() != null) {
                 Movie movie = movieMap.get(order.getMovieId());
-                if (movie != null) order.setMovieName(movie.getMovieName());
+                if (movie != null) {
+                    order.setMovieName(movie.getMovieName());
+                    order.setMoviePoster(movie.getPosterUrl());
+                }
             }
             if (order.getHallId() != null) {
                 Hall hall = hallMap.get(order.getHallId());
@@ -688,6 +706,10 @@ public class OrderServiceImpl implements OrderService {
                     order.setStartTime(schedule.getStartTime());
                     order.setEndTime(schedule.getEndTime());
                 }
+            }
+            if (order.getUserId() != null) {
+                User user = userMap.get(order.getUserId());
+                if (user != null) order.setUsername(user.getUsername());
             }
         }
     }

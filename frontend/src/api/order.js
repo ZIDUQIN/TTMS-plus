@@ -56,10 +56,11 @@ export function refundOrder(orderId) {
 // ===== Admin Order APIs =====
 
 // Get all orders (admin)
-export function getAdminOrders() {
+export function getAdminOrders(params = {}) {
   return request({
     url: '/admin/orders/list',
-    method: 'get'
+    method: 'get',
+    params: { page: params.page || 1, size: params.size || 10, ...params }
   })
 }
 

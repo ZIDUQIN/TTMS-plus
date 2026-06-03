@@ -63,7 +63,6 @@
           <el-form-item label="角色" prop="roleCode">
             <el-select v-model="form.roleCode" placeholder="请选择角色" style="width: 100%">
               <el-option label="超级管理员" value="ROLE_SUPER_ADMIN" />
-              <el-option label="管理员" value="ROLE_ADMIN" />
               <el-option label="员工" value="ROLE_STAFF" />
             </el-select>
           </el-form-item>
@@ -107,7 +106,7 @@ const rules = {
 }
 
 function roleType(roleCode) {
-  const map = { 'ROLE_SUPER_ADMIN': 'danger', 'ROLE_ADMIN': 'warning', 'ROLE_STAFF': 'info' }
+  const map = { 'ROLE_SUPER_ADMIN': 'danger', 'ROLE_STAFF': 'info' }
   return map[roleCode] || 'info'
 }
 

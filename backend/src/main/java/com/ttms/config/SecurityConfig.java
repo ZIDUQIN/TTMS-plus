@@ -44,29 +44,35 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
             // URL授权规则配置
+            // 策略：仅保护API路径，非API请求（静态资源、Vue Router SPA路由）全部放行
             .authorizeHttpRequests(auth -> auth
-                // 允许所有用户访问认证相关接口（登录、注册）
+                // ========== 认证相关接口：所有人可访问 ==========
                 .requestMatchers("/api/auth/**").permitAll()
-                // 允许所有用户查看影片信息（公开GET请求）
+
+                // ========== 影片信息：GET公开，管理操作需管理员 ==========
                 .requestMatchers(HttpMethod.GET, "/api/movies/**").permitAll()
-                // 影片管理操作需要管理员角色
                 .requestMatchers(HttpMethod.POST, "/api/movies/**").hasAnyRole("SUPER_ADMIN", "STAFF")
                 .requestMatchers(HttpMethod.PUT, "/api/movies/**").hasAnyRole("SUPER_ADMIN", "STAFF")
                 .requestMatchers(HttpMethod.DELETE, "/api/movies/**").hasAnyRole("SUPER_ADMIN", "STAFF")
-                // 允许所有用户查询场次信息
+
+                // ========== 场次查询：所有人可查，管理需管理员 ==========
                 .requestMatchers("/api/schedules/query/**").permitAll()
-                // 场次管理操作需要管理员角色
                 .requestMatchers("/api/schedules/**").hasAnyRole("SUPER_ADMIN", "STAFF")
-                // 允许所有用户访问上传的静态资源文件
-                .requestMatchers("/uploads/**").permitAll()
-                // 管理端接口需要 SUPER_ADMIN 或 STAFF 角色
+
+                // ========== 管理端接口：管理员角色 ==========
                 .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "STAFF")
-                // 文件上传接口需要管理员角色
+
+                // ========== 文件上传：管理员 ==========
                 .requestMatchers("/api/upload").hasAnyRole("SUPER_ADMIN", "STAFF")
-                // 用户端接口需要认证（所有已登录用户均可访问）
+
+                // ========== 用户端接口：需要登录 ==========
                 .requestMatchers("/api/user/**").authenticated()
-                // 其他所有请求需要认证
-                .anyRequest().authenticated())
+
+                // ========== 其他API路径：需要认证 ==========
+                .requestMatchers("/api/**").authenticated()
+
+                // ========== 非API请求（静态资源 + SPA路由）：全部放行 ==========
+                .anyRequest().permitAll())
 
             // 将JWT认证过滤器添加到UsernamePasswordAuthenticationFilter之前
             // 这样请求会先经过JWT过滤器解析令牌并设置认证信息

@@ -201,21 +201,29 @@ public class ScheduleServiceImpl implements ScheduleService {
      * 根据影片ID查询场次列表
      *
      * @param movieId 影片ID
-     * @return 该影片的所有场次
+     * @return 该影片的所有场次（含关联信息）
      */
     @Override
     public List<Schedule> queryByMovie(Long movieId) {
-        return scheduleMapper.selectByMovieId(movieId);
+        List<Schedule> schedules = scheduleMapper.selectByMovieId(movieId);
+        if (schedules != null && !schedules.isEmpty()) {
+            fillScheduleInfo(schedules);
+        }
+        return schedules;
     }
 
     /**
      * 查询即将上映的场次
      *
-     * @return 开始时间在未来的场次列表
+     * @return 开始时间在未来的场次列表（含关联信息）
      */
     @Override
     public List<Schedule> queryUpcoming() {
-        return scheduleMapper.selectUpcoming();
+        List<Schedule> schedules = scheduleMapper.selectUpcoming();
+        if (schedules != null && !schedules.isEmpty()) {
+            fillScheduleInfo(schedules);
+        }
+        return schedules;
     }
 
     /**
@@ -361,6 +369,28 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     /**
+     * 统计不可用座位数量
+     * @param seatLayout 座位布局JSON，格式: ["1-5","2-10","3-8"]
+     * @return 不可用座位数
+     */
+    private int countDisabledSeats(String seatLayout) {
+        if (seatLayout == null || seatLayout.isBlank()) {
+            return 0;
+        }
+        try {
+            String content = seatLayout.trim();
+            if (content.startsWith("[") && content.endsWith("]")) {
+                content = content.substring(1, content.length() - 1);
+                if (content.isBlank()) return 0;
+                return content.split(",").length;
+            }
+        } catch (Exception e) {
+            log.warn("统计不可用座位数失败: {}", e.getMessage());
+        }
+        return 0;
+    }
+
+    /**
      * 解析座位布局JSON，提取不可用座位位置集合
      * JSON格式: ["1-5","2-10","3-8"]
      */
@@ -451,6 +481,12 @@ public class ScheduleServiceImpl implements ScheduleService {
                     schedule.setHallName(hall.getHallName());
                     schedule.setHallRowCount(hall.getRowCount());
                     schedule.setHallColCount(hall.getColCount());
+                    // 计算可用座位数：总座位 - 已售 - 不可用座位
+                    int totalSeats = (hall.getRowCount() != null ? hall.getRowCount() : 0)
+                                   * (hall.getColCount() != null ? hall.getColCount() : 0);
+                    int disabledCount = countDisabledSeats(hall.getSeatLayout());
+                    int soldCount = schedule.getSoldCount() != null ? schedule.getSoldCount() : 0;
+                    schedule.setAvailableSeats(Math.max(0, totalSeats - disabledCount - soldCount));
                 }
             }
         }

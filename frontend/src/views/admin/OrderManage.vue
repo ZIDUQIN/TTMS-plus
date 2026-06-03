@@ -214,7 +214,7 @@ function formatSeats(row) {
 async function fetchOrders() {
   loading.value = true
   try {
-    const res = await getAdminOrders()
+    const res = await getAdminOrders({ size: 999 })
     // 兼容多种API响应格式
     if (Array.isArray(res.data)) {
       orders.value = res.data

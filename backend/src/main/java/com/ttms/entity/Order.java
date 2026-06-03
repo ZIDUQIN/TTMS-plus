@@ -60,6 +60,8 @@ public class Order {
     @TableField(exist = false)
     private String movieName;
     @TableField(exist = false)
+    private String moviePoster;
+    @TableField(exist = false)
     private String hallName;
     @TableField(exist = false)
     private String username;

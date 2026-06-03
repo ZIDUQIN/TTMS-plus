@@ -72,7 +72,7 @@
           <div class="order-body">
             <div class="order-movie">
               <img
-                :src="order.moviePoster || order.poster || defaultPoster"
+                :src="order.moviePoster || defaultPoster"
                 :alt="order.movieName"
                 class="order-poster"
                 @error="onImgError"
@@ -80,7 +80,7 @@
               <div class="order-info">
                 <h4>{{ order.movieName }}</h4>
                 <p>{{ formatDateTime(order.scheduleStartTime || order.startTime) }}</p>
-                <p>{{ order.hallName || '--' }} | {{ (order.seatNumbers || order.seats || []).join('、') }}</p>
+                <p>{{ order.hallName || '--' }} | {{ formatSeats(order) }}</p>
               </div>
             </div>
 
@@ -122,7 +122,7 @@
               <el-descriptions-item label="影片">{{ order.movieName }}</el-descriptions-item>
               <el-descriptions-item label="影厅">{{ order.hallName }}</el-descriptions-item>
               <el-descriptions-item label="场次时间">{{ formatDateTime(order.scheduleStartTime || order.startTime) }}</el-descriptions-item>
-              <el-descriptions-item label="座位">{{ (order.seatNumbers || order.seats || []).join('、') }}</el-descriptions-item>
+              <el-descriptions-item label="座位">{{ formatSeats(order) }}</el-descriptions-item>
               <el-descriptions-item label="金额">${{ order.totalAmount || order.totalPrice }}</el-descriptions-item>
               <el-descriptions-item label="创建时间">{{ formatDateTime(order.createTime || order.createdAt) }}</el-descriptions-item>
             </el-descriptions>
@@ -193,6 +193,15 @@ import NavBar from '@/components/NavBar.vue'
 
 const router = useRouter()
 
+// 格式化座位号：后端返回逗号分隔字符串（如 "A-01,B-02"），需分割后用顿号拼接
+function formatSeats(order) {
+  const seats = order.seatNumbers || order.seats
+  if (!seats) return '--'
+  if (Array.isArray(seats)) return seats.join('、')
+  if (typeof seats === 'string') return seats.split(',').join('、')
+  return String(seats)
+}
+
 const orders = ref([])
 const loading = ref(true)
 const filterStatus = ref('')
@@ -218,8 +227,9 @@ function onImgError(e) {
 
 const filteredOrders = computed(() => {
   if (filterStatus.value === '' || filterStatus.value === null) return orders.value
+  const targetStatus = Number(filterStatus.value)
   return orders.value.filter(o =>
-    (o.status ?? o.orderStatus) === filterStatus.value
+    (o.status ?? o.orderStatus) === targetStatus
   )
 })
 
