@@ -21,6 +21,10 @@
               <el-icon><DataBoard /></el-icon>
               <span>仪表盘</span>
             </el-menu-item>
+            <el-menu-item index="/admin/box-office">
+              <el-icon><TrendCharts /></el-icon>
+              <span>电影票房</span>
+            </el-menu-item>
             <el-menu-item index="/admin/movies" v-if="authStore.isSuperAdmin">
               <el-icon><Film /></el-icon>
               <span>影片管理</span>

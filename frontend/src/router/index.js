@@ -81,6 +81,12 @@ const routes = [
     meta: { title: '订单管理', requiresAuth: true, requiresAdmin: true }
   },
   {
+    path: '/admin/box-office',
+    name: 'BoxOffice',
+    component: () => import('@/views/admin/BoxOffice.vue'),
+    meta: { title: '电影票房', requiresAuth: true, requiresAdmin: true }
+  },
+  {
     path: '/admin/statistics',
     name: 'Statistics',
     component: () => import('@/views/admin/Statistics.vue'),

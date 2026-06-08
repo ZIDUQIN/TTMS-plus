@@ -32,11 +32,10 @@ function parseStoredUser() {
   const realName = computed(() => user.value?.realName || user.value?.nickname || user.value?.username || '')
 
   // Actions
-  async function login(credentials, loginType) {
+  async function login(credentials) {
     const payload = {
       username: credentials.username,
-      password: credentials.password,
-      loginType: loginType
+      password: credentials.password
     }
     const res = await loginApi(payload)
     const data = res.data

@@ -20,6 +20,14 @@ export function getMovieDetail(id) {
   })
 }
 
+// Get hot movies
+export function getHotMovies() {
+  return request({
+    url: '/movies/hot',
+    method: 'get'
+  })
+}
+
 // Search movies
 export function searchMovies(keyword) {
   return request({

@@ -105,39 +105,6 @@ img {
   --sidebar-width: 240px;
 }
 
-/* ========== Theme: Purple (Film Festival Style) ========== */
-[data-theme='purple'] {
-  --bg-primary: #2d1b69;
-  --bg-secondary: #1f1147;
-  --bg-sidebar: #190e3d;
-  --bg-card: #3a2588;
-  --bg-hover: #4a30a0;
-  --text-primary: #f5f0ff;
-  --text-secondary: #dcd0f8;
-  --text-muted: #ccc0e8;
-  --color-primary: #e040fb;
-  --color-primary-light: #f062ff;
-  --color-primary-dark: #c020d8;
-  --color-success: #69f0ae;
-  --color-warning: #ffab40;
-  --color-danger: #ff5252;
-  --color-info: #c0b8f0;
-  --color-accent: #ff6ec7;
-  --color-accent-light: #ff90d8;
-  --color-gold: #ffd54f;
-  --border-color: #5e48a0;
-  --border-light: #4a3888;
-  --shadow-light: 0 2px 12px rgba(0, 0, 0, 0.3);
-  --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.35);
-  --shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.45);
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --header-height: 64px;
-  --sidebar-width: 240px;
-}
-
 /* ========== Global Style Overrides ========== */
 body {
   background-color: var(--bg-secondary);

@@ -81,4 +81,17 @@ public interface ScheduleMapper extends BaseMapper<Schedule> {
      */
     @Update("UPDATE schedule SET sold_count = sold_count - #{count} WHERE id = #{id} AND sold_count >= #{count}")
     int decrementSoldCount(@Param("id") Long id, @Param("count") int count);
+
+    /**
+     * 按日期查询所有场次（含影厅容量信息）
+     * 用于票房排片统计——在Java层进行聚合
+     *
+     * @param date 查询日期
+     * @return 场次列表（含hallRowCount, hallColCount非数据库字段）
+     */
+    @Select("SELECT s.*, h.row_count AS hallRowCount, h.col_count AS hallColCount " +
+            "FROM schedule s " +
+            "JOIN hall h ON s.hall_id = h.id " +
+            "WHERE DATE(s.start_time) = #{date} AND s.deleted = 0")
+    List<Schedule> selectByDateWithHall(@Param("date") String date);
 }

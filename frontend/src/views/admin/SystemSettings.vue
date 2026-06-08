@@ -60,6 +60,11 @@
                 <template #append>分钟</template>
               </el-input>
             </el-form-item>
+            <el-form-item label="影院分账比例">
+              <el-input v-model.number="config.share_ratio" placeholder="52">
+                <template #append>%</template>
+              </el-input>
+            </el-form-item>
             <el-form-item label="是否开启注册">
               <el-switch v-model="config.allowRegister" />
             </el-form-item>
@@ -122,9 +127,8 @@ import NavBar from '@/components/NavBar.vue'
 const themeStore = useThemeStore()
 
 const themes = [
-  { key: 'white', name: '白色商务', desc: '清爽简洁，适合日常办公' },
-  { key: 'dark', name: '暗夜影院', desc: '深邃暗色，影院级沉浸体验' },
-  { key: 'purple', name: '紫色幻影', desc: '紫色氛围，电影艺术风格' }
+  { key: 'white', name: '日间模式', desc: '浅色背景，适合日常办公' },
+  { key: 'dark', name: '夜间模式', desc: '深邃暗色，护眼沉浸体验' }
 ]
 
 const defaultTheme = ref('white')
@@ -137,7 +141,8 @@ const config = reactive({
   contactEmail: '',
   maxSeatSelect: 6,
   refundDeadline: '30',
-  allowRegister: true
+  allowRegister: true,
+  share_ratio: 52
 })
 
 const originalConfig = { ...config }
@@ -194,7 +199,8 @@ async function fetchConfig() {
       contactEmail: data.contactEmail || '',
       maxSeatSelect: data.maxSeatSelect || 6,
       refundDeadline: data.refundDeadline || '30',
-      allowRegister: data.allowRegister !== false
+      allowRegister: data.allowRegister !== false,
+      share_ratio: data.share_ratio ? parseInt(data.share_ratio) : 52
     })
     Object.assign(originalConfig, config)
     if (data.theme) {
@@ -234,7 +240,7 @@ onMounted(() => {
 .card-body { padding: 20px; }
 
 /* Theme cards */
-.theme-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.theme-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 .theme-card { padding: 16px; border-radius: var(--radius-md); border: 2px solid var(--border-color); cursor: pointer; transition: all 0.2s; position: relative; }
 .theme-card:hover { border-color: var(--color-primary-light); }
 .theme-card.active { border-color: var(--color-primary); }
@@ -257,11 +263,6 @@ onMounted(() => {
 .theme-preview-dark .preview-bar { background: #1a1a2e; }
 .theme-preview-dark .preview-sidebar { background: #0f0f23; }
 .theme-preview-dark .preview-content { background: #1e2a4a; }
-
-.theme-preview-purple { background: #1f1147; }
-.theme-preview-purple .preview-bar { background: #2d1b69; }
-.theme-preview-purple .preview-sidebar { background: #190e3d; }
-.theme-preview-purple .preview-content { background: #3a2588; }
 
 @media (max-width: 768px) {
   .theme-cards { grid-template-columns: 1fr; }

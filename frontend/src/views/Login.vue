@@ -1,6 +1,5 @@
 <template>
   <div class="login-page">
-    <!-- Background overlay -->
     <div class="login-bg"></div>
 
     <div class="login-container">
@@ -30,31 +29,11 @@
         </div>
       </div>
 
-      <!-- Right: login form -->
+      <!-- Right: unified login form -->
       <div class="login-right">
         <div class="login-form-wrapper">
           <h2 class="form-title">欢迎回来</h2>
-          <p class="form-subtitle">登录您的账户</p>
-
-          <!-- Login type tabs -->
-          <div class="login-tabs">
-            <div
-              class="tab-item"
-              :class="{ active: loginType === 'USER' }"
-              @click="loginType = 'USER'"
-            >
-              <el-icon><User /></el-icon>
-              <span>用户登录</span>
-            </div>
-            <div
-              class="tab-item"
-              :class="{ active: loginType === 'ADMIN' }"
-              @click="loginType = 'ADMIN'"
-            >
-              <el-icon><Avatar /></el-icon>
-              <span>管理员登录</span>
-            </div>
-          </div>
+          <p class="form-subtitle">登录您的账户，系统将自动识别身份</p>
 
           <el-form
             ref="formRef"
@@ -89,12 +68,12 @@
                 @click="handleLogin"
                 round
               >
-                {{ loginType === 'USER' ? '登 录' : '管理员登录' }}
+                登 录
               </el-button>
             </el-form-item>
           </el-form>
 
-          <div v-if="loginType === 'USER'" class="form-footer">
+          <div class="form-footer">
             还没有账号？
             <router-link to="/register" class="register-link">立即注册</router-link>
           </div>
@@ -110,7 +89,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage } from 'element-plus'
 import {
-  VideoCameraFilled, User, Lock, Avatar, Film, Select, Management
+  VideoCameraFilled, User, Lock, Film, Select, Management
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -119,7 +98,6 @@ const authStore = useAuthStore()
 
 const formRef = ref(null)
 const loading = ref(false)
-const loginType = ref('USER')
 
 const form = reactive({
   username: '',
@@ -144,13 +122,10 @@ async function handleLogin() {
 
   loading.value = true
   try {
-    await authStore.login(
-      { username: form.username, password: form.password },
-      loginType.value
-    )
+    await authStore.login({ username: form.username, password: form.password })
     ElMessage.success('登录成功，欢迎回来！')
 
-    // Redirect based on role
+    // 根据角色跳转
     const redirect = route.query.redirect
     if (redirect) {
       router.push(redirect)
@@ -160,7 +135,7 @@ async function handleLogin() {
       router.push('/home')
     }
   } catch (err) {
-    // Error handled by interceptor
+    // 错误由axios拦截器统一处理
   } finally {
     loading.value = false
   }
@@ -193,8 +168,7 @@ async function handleLogin() {
   height: 200%;
   background:
     radial-gradient(circle at 30% 70%, rgba(233, 69, 96, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 70% 30%, rgba(64, 158, 255, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 50% 50%, rgba(212, 168, 83, 0.05) 0%, transparent 50%);
+    radial-gradient(circle at 70% 30%, rgba(64, 158, 255, 0.08) 0%, transparent 50%);
   animation: bgMove 20s ease-in-out infinite;
 }
 
@@ -298,35 +272,7 @@ async function handleLogin() {
 .form-subtitle {
   font-size: 14px;
   color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 32px;
-}
-
-.login-tabs {
-  display: flex;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: var(--radius-md);
-  padding: 4px;
-  margin-bottom: 32px;
-}
-
-.tab-item {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 16px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.tab-item.active {
-  background: rgba(233, 69, 96, 0.2);
-  color: #e94560;
-  font-weight: 600;
+  margin-bottom: 36px;
 }
 
 .login-btn {

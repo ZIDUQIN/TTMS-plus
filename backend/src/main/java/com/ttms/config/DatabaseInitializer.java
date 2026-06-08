@@ -144,8 +144,15 @@ public class DatabaseInitializer implements CommandLineRunner {
             SystemConfig theme = new SystemConfig();
             theme.setConfigKey("theme");
             theme.setConfigValue("white");
-            theme.setDescription("系统默认主题色: white(白色) / dark(暗黑)");
+            theme.setDescription("系统默认主题: white(日间模式) / dark(夜间模式)");
             systemConfigMapper.insert(theme);
+
+            // 默认分账比例
+            SystemConfig shareRatio = new SystemConfig();
+            shareRatio.setConfigKey("share_ratio");
+            shareRatio.setConfigValue("52");
+            shareRatio.setDescription("影院分账比例(百分比)，如52代表影院拿52%");
+            systemConfigMapper.insert(shareRatio);
 
             // 影院名称
             SystemConfig cinemaName = new SystemConfig();
@@ -188,6 +195,7 @@ public class DatabaseInitializer implements CommandLineRunner {
     private void initMovies() {
         List<Movie> existing = movieMapper.selectList(null);
         if (existing != null && existing.size() >= 5) {
+
             log.info("影片表已有 {} 条数据，跳过电影数据初始化", existing.size());
             return;
         }

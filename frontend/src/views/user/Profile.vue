@@ -91,7 +91,7 @@
                     <div class="preview-main"></div>
                   </div>
                 </div>
-                <span>白色商务</span>
+                <span>日间模式</span>
                 <el-icon v-if="themeStore.currentTheme === 'white'" class="check-icon"><CircleCheckFilled /></el-icon>
               </div>
               <div
@@ -106,23 +106,8 @@
                     <div class="preview-main"></div>
                   </div>
                 </div>
-                <span>暗夜影院</span>
+                <span>夜间模式</span>
                 <el-icon v-if="themeStore.currentTheme === 'dark'" class="check-icon"><CircleCheckFilled /></el-icon>
-              </div>
-              <div
-                class="theme-card"
-                :class="{ active: themeStore.currentTheme === 'purple' }"
-                @click="themeStore.setTheme('purple')"
-              >
-                <div class="theme-preview purple-preview">
-                  <div class="preview-bar"></div>
-                  <div class="preview-content">
-                    <div class="preview-sidebar"></div>
-                    <div class="preview-main"></div>
-                  </div>
-                </div>
-                <span>紫色幻影</span>
-                <el-icon v-if="themeStore.currentTheme === 'purple'" class="check-icon"><CircleCheckFilled /></el-icon>
               </div>
             </div>
           </div>
@@ -358,12 +343,6 @@ function handleLogout() {
 .dark-preview .preview-bar { background: #1a1a2e; }
 .dark-preview .preview-sidebar { background: #0f0f23; }
 .dark-preview .preview-main { background: #1e2a4a; }
-
-/* Purple theme preview */
-.purple-preview { background: #1f1147; }
-.purple-preview .preview-bar { background: #2d1b69; }
-.purple-preview .preview-sidebar { background: #190e3d; }
-.purple-preview .preview-main { background: #3a2588; }
 
 .logout-btn {
   width: 100%;

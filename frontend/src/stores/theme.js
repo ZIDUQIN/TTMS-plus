@@ -9,7 +9,7 @@ export const useThemeStore = defineStore('theme', () => {
 
   // Actions
   function setTheme(theme) {
-    if (!['white', 'dark', 'purple'].includes(theme)) return
+    if (!['white', 'dark'].includes(theme)) return
     currentTheme.value = theme
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem(THEME_KEY, theme)

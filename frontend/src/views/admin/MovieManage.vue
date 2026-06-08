@@ -66,7 +66,7 @@
             </el-col>
             <el-col :span="12">
               <el-form-item label="类型" prop="genre">
-                <el-select v-model="form.genre" placeholder="请选择类型" style="width: 100%">
+                <el-select v-model="form.genre" multiple placeholder="请选择类型（可多选）" style="width: 100%" collapse-tags collapse-tags-tooltip>
                   <el-option v-for="g in genreOptions" :key="g" :label="g" :value="g" />
                 </el-select>
               </el-form-item>
@@ -89,16 +89,16 @@
             </el-col>
           </el-row>
           <el-row :gutter="16">
-            <el-col :span="8">
+            <el-col :span="12">
               <el-form-item label="国家/地区"><el-input v-model="form.country" placeholder="如：中国" /></el-form-item>
             </el-col>
-            <el-col :span="8">
+            <el-col :span="12">
               <el-form-item label="语言"><el-input v-model="form.language" placeholder="如：国语" /></el-form-item>
             </el-col>
-            <el-col :span="8">
-              <el-form-item label="评分"><el-rate v-model="form.rating" allow-half style="height: 32px;" /></el-form-item>
-            </el-col>
           </el-row>
+          <el-form-item label="评分">
+            <el-rate v-model="form.rating" :max="10" allow-half show-score />
+          </el-form-item>
           <el-row :gutter="16">
             <el-col :span="12">
               <el-form-item label="上映日期"><el-date-picker v-model="form.releaseDate" type="date" placeholder="选择日期" style="width: 100%" value-format="YYYY-MM-DD" /></el-form-item>
@@ -168,24 +168,24 @@ const defaultPoster = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="ht
 
 function onImgError(e) { e.target.src = defaultPoster }
 
-const form = reactive({ name: '', genre: '', duration: 90, price: 0, director: '', actors: '', country: '', language: '', releaseDate: '', rating: 0, poster: '', description: '', status: 1 })
+const form = reactive({ name: '', genre: [], duration: 90, price: 0, director: '', actors: '', country: '', language: '', releaseDate: '', rating: 0, poster: '', description: '', status: 1 })
 
 const rules = {
   name: [{ required: true, message: '请输入影片名称', trigger: 'blur' }],
-  genre: [{ required: true, message: '请选择类型', trigger: 'change' }],
+  genre: [{ type: 'array', required: true, message: '请至少选择一个类型', trigger: 'change' }],
   duration: [{ required: true, message: '请输入时长', trigger: 'blur' }],
   price: [{ required: true, message: '请输入票价', trigger: 'blur' }]
 }
 
 function resetForm() {
-  Object.assign(form, { name: '', genre: '', duration: 90, price: 0, director: '', actors: '', country: '', language: '', releaseDate: '', rating: 0, poster: '', description: '', status: 1 })
+  Object.assign(form, { name: '', genre: [], duration: 90, price: 0, director: '', actors: '', country: '', language: '', releaseDate: '', rating: 0, poster: '', description: '', status: 1 })
 }
 
 function openAdd() { isEdit.value = false; editingId.value = null; resetForm(); dialogVisible.value = true }
 
 function openEdit(row) {
   isEdit.value = true; editingId.value = row.id
-  form.name = row.name; form.genre = row.genre; form.duration = row.duration; form.price = row.price
+  form.name = row.name; form.genre = row.genre ? row.genre.split(',').filter(g => g.trim()) : []; form.duration = row.duration; form.price = row.price
   form.director = row.director || ''; form.actors = row.actors || ''; form.country = row.country || ''; form.language = row.language || ''
   form.releaseDate = row.releaseDate; form.rating = row.rating || 0; form.poster = row.poster || ''; form.description = row.description || ''; form.status = row.status
   dialogVisible.value = true
@@ -197,7 +197,8 @@ async function handleSubmit() {
   if (!valid) return
   submitting.value = true
   try {
-    const payload = { name: form.name, genre: form.genre, duration: form.duration, price: form.price, director: form.director, actors: form.actors, country: form.country, language: form.language, releaseDate: form.releaseDate, rating: form.rating, poster: form.poster, description: form.description, status: form.status }
+    const genreStr = Array.isArray(form.genre) ? form.genre.join(',') : form.genre
+    const payload = { name: form.name, genre: genreStr, duration: form.duration, price: form.price, director: form.director, actors: form.actors, country: form.country, language: form.language, releaseDate: form.releaseDate, rating: form.rating, poster: form.poster, description: form.description, status: form.status }
     if (isEdit.value) {
       await updateMovie({ id: editingId.value, ...payload })
       ElMessage.success('影片更新成功')

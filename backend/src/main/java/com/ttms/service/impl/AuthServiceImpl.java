@@ -49,69 +49,76 @@ public class AuthServiceImpl implements AuthService {
         String password = request.getPassword();
         String loginType = request.getLoginType();
 
-        // 管理端登录：查询employee表
-        if ("ADMIN".equalsIgnoreCase(loginType)) {
+        // 自动检测模式（loginType为空）：先查employee表，再查user表
+        boolean autoDetect = (loginType == null || loginType.isEmpty());
+
+        // ========== 管理端登录 ==========
+        if ("ADMIN".equalsIgnoreCase(loginType) || autoDetect) {
             Employee employee = employeeMapper.findByUsername(username);
-            if (employee == null || employee.getStatus() == null || employee.getStatus() == 1) {
+            if (employee != null && employee.getStatus() != null && employee.getStatus() == 0) {
+                if (passwordEncoder.matches(password, employee.getPassword())) {
+                    Role role = roleMapper.selectById(employee.getRoleId());
+                    if (role == null) {
+                        throw new BusinessException("用户角色未配置，请联系管理员");
+                    }
+                    String token = jwtTokenProvider.generateToken(
+                        employee.getId(), employee.getUsername(), role.getRoleCode(), "ADMIN");
+
+                    log.info("管理端登录成功: 用户名={}, 角色={}", employee.getUsername(), role.getRoleName());
+
+                    return LoginResponse.builder()
+                        .token(token)
+                        .tokenType("Bearer")
+                        .userId(employee.getId())
+                        .username(employee.getUsername())
+                        .realName(employee.getRealName())
+                        .roleCode(role.getRoleCode())
+                        .roleName(role.getRoleName())
+                        .permissions(parsePermissions(role.getPermissions()))
+                        .build();
+                }
+                // 密码错误时，如果是显式ADMIN登录，直接报错；自动检测则继续尝试user表
+                if (!autoDetect) {
+                    throw new BusinessException(401, "用户名或密码错误");
+                }
+            } else if (!autoDetect) {
                 throw new BusinessException(401, "用户名或密码错误");
             }
-            // 验证密码
-            if (!passwordEncoder.matches(password, employee.getPassword())) {
-                throw new BusinessException(401, "用户名或密码错误");
-            }
-            // 获取角色信息
-            Role role = roleMapper.selectById(employee.getRoleId());
-            if (role == null) {
-                throw new BusinessException("用户角色未配置，请联系管理员");
-            }
-            // 生成JWT令牌
-            String token = jwtTokenProvider.generateToken(
-                employee.getId(), employee.getUsername(), role.getRoleCode(), "ADMIN");
-
-            log.info("管理端登录成功: 用户名={}, 角色={}", employee.getUsername(), role.getRoleName());
-
-            return LoginResponse.builder()
-                .token(token)
-                .tokenType("Bearer")
-                .userId(employee.getId())
-                .username(employee.getUsername())
-                .realName(employee.getRealName())
-                .roleCode(role.getRoleCode())
-                .roleName(role.getRoleName())
-                .permissions(parsePermissions(role.getPermissions()))
-                .build();
-
-        // 用户端登录：查询user表
-        } else if ("USER".equalsIgnoreCase(loginType)) {
-            User user = userMapper.findByUsername(username);
-            if (user == null || user.getStatus() == null || user.getStatus() == 1) {
-                throw new BusinessException(401, "用户名或密码错误");
-            }
-            // 验证密码
-            if (!passwordEncoder.matches(password, user.getPassword())) {
-                throw new BusinessException(401, "用户名或密码错误");
-            }
-            // 生成JWT令牌（普通用户固定ROLE_USER角色）
-            String token = jwtTokenProvider.generateToken(
-                user.getId(), user.getUsername(), "ROLE_USER", "USER");
-
-            log.info("用户端登录成功: 用户名={}", user.getUsername());
-
-            return LoginResponse.builder()
-                .token(token)
-                .tokenType("Bearer")
-                .userId(user.getId())
-                .username(user.getUsername())
-                .realName(user.getNickname() != null ? user.getNickname() : user.getUsername())
-                .roleCode("ROLE_USER")
-                .roleName("普通用户")
-                .theme(user.getTheme())
-                .permissions(List.of("movie:view", "order:create", "order:view",
-                    "order:reschedule", "order:refund", "theme:set"))
-                .build();
-        } else {
-            throw new BusinessException(400, "登录类型无效，请选择用户登录或管理员登录");
         }
+
+        // ========== 用户端登录 ==========
+        if ("USER".equalsIgnoreCase(loginType) || autoDetect) {
+            User user = userMapper.findByUsername(username);
+            if (user != null && user.getStatus() != null && user.getStatus() == 0) {
+                if (passwordEncoder.matches(password, user.getPassword())) {
+                    String token = jwtTokenProvider.generateToken(
+                        user.getId(), user.getUsername(), "ROLE_USER", "USER");
+
+                    log.info("用户端登录成功: 用户名={}", user.getUsername());
+
+                    return LoginResponse.builder()
+                        .token(token)
+                        .tokenType("Bearer")
+                        .userId(user.getId())
+                        .username(user.getUsername())
+                        .realName(user.getNickname() != null ? user.getNickname() : user.getUsername())
+                        .roleCode("ROLE_USER")
+                        .roleName("普通用户")
+                        .theme(user.getTheme())
+                        .permissions(List.of("movie:view", "order:create", "order:view",
+                            "order:reschedule", "order:refund", "theme:set"))
+                        .build();
+                }
+                if (!autoDetect) {
+                    throw new BusinessException(401, "用户名或密码错误");
+                }
+            } else if (!autoDetect) {
+                throw new BusinessException(401, "用户名或密码错误");
+            }
+        }
+
+        // 所有尝试均失败
+        throw new BusinessException(401, "用户名或密码错误");
     }
 
     /**

@@ -9,22 +9,15 @@
         <el-dropdown-item command="white" :class="{ active: current === 'white' }">
           <div class="theme-option">
             <span class="theme-dot white-dot"></span>
-            <span>白色商务</span>
+            <span>日间模式</span>
             <el-icon v-if="current === 'white'" class="check-icon"><Check /></el-icon>
           </div>
         </el-dropdown-item>
         <el-dropdown-item command="dark" :class="{ active: current === 'dark' }">
           <div class="theme-option">
             <span class="theme-dot dark-dot"></span>
-            <span>暗夜影院</span>
+            <span>夜间模式</span>
             <el-icon v-if="current === 'dark'" class="check-icon"><Check /></el-icon>
-          </div>
-        </el-dropdown-item>
-        <el-dropdown-item command="purple" :class="{ active: current === 'purple' }">
-          <div class="theme-option">
-            <span class="theme-dot purple-dot"></span>
-            <span>紫色幻影</span>
-            <el-icon v-if="current === 'purple'" class="check-icon"><Check /></el-icon>
           </div>
         </el-dropdown-item>
       </el-dropdown-menu>
@@ -87,10 +80,6 @@ function handleChange(theme) {
 
 .dark-dot {
   background: linear-gradient(135deg, #1a1a2e 50%, #e94560 50%);
-}
-
-.purple-dot {
-  background: linear-gradient(135deg, #2d1b69 50%, #e040fb 50%);
 }
 
 .check-icon {
