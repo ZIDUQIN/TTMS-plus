@@ -93,4 +93,13 @@ public interface OrderService {
      * @return 创建的订单
      */
     Order assistCreate(OrderRequest request, Long userId, Long operatorId);
+
+    /**
+     * 协助支付订单（管理端替用户支付）
+     *
+     * @param orderId    订单ID
+     * @param operatorId 操作员工ID
+     * @return 支付后的订单
+     */
+    Order assistPay(Long orderId, Long operatorId);
 }

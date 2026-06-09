@@ -127,11 +127,11 @@ import NavBar from '@/components/NavBar.vue'
 const themeStore = useThemeStore()
 
 const themes = [
-  { key: 'white', name: '日间模式', desc: '浅色背景，适合日常办公' },
-  { key: 'dark', name: '夜间模式', desc: '深邃暗色，护眼沉浸体验' }
+  { key: 'light', name: '浅色模式', desc: '明亮通透，适合日常办公' },
+  { key: 'dark', name: '深色模式', desc: '深邃暗色，护眼沉浸体验' }
 ]
 
-const defaultTheme = ref('white')
+const defaultTheme = ref('light')
 const savingTheme = ref(false)
 const savingConfig = ref(false)
 

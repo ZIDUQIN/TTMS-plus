@@ -22,10 +22,10 @@
           <el-table-column prop="genre" label="类型" width="100" />
           <el-table-column prop="duration" label="时长(分)" width="90" />
           <el-table-column prop="releaseDate" label="上映日期" width="120" />
-          <el-table-column label="票价" width="80">
+          <el-table-column label="票价" width="100">
             <template #default="{ row }">¥{{ row.price || '--' }}</template>
           </el-table-column>
-          <el-table-column label="状态" width="100">
+          <el-table-column label="状态" width="120">
             <template #default="{ row }">
               <el-tag :type="row.status === 1 ? 'success' : row.status === 2 ? 'warning' : 'danger'" size="small">
                 {{ row.status === 1 ? '上映中' : row.status === 2 ? '即将上映' : '已下架' }}

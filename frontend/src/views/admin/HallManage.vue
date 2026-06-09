@@ -10,7 +10,7 @@
       <div class="card">
         <el-table :data="halls" v-loading="loading" stripe>
           <el-table-column prop="name" label="影厅名称" min-width="120" />
-          <el-table-column label="类型" width="100">
+          <el-table-column label="类型" width="110">
             <template #default="{ row }">
               <el-tag size="small">{{ hallTypeLabel(row.type) }}</el-tag>
             </template>

@@ -492,11 +492,11 @@ onUnmounted(() => {
   color: #fff;
 }
 
-/* ===== 默认Hero（无热门影片时） ===== */
+/* ===== 默认Hero（无热门影片时）===== */
 .hero-banner {
   position: relative;
   height: 380px;
-  background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+  background: var(--bg-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -507,9 +507,14 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 20% 50%, rgba(233,69,96,0.15) 0%, transparent 50%),
-    radial-gradient(circle at 80% 50%, rgba(64,158,255,0.1) 0%, transparent 50%);
+    radial-gradient(ellipse at 20% 50%, var(--color-primary) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, var(--color-accent) 0%, transparent 40%);
+  opacity: 0.04;
   pointer-events: none;
+}
+
+[data-theme='dark'] .hero-overlay {
+  opacity: 0.08;
 }
 
 .hero-content {
@@ -521,15 +526,15 @@ onUnmounted(() => {
 
 .hero-title {
   font-size: 42px;
-  font-weight: 800;
-  color: #fff;
+  font-weight: 700;
+  color: var(--text-primary);
   margin-bottom: 12px;
-  letter-spacing: 2px;
+  letter-spacing: -0.022em;
 }
 
 .hero-subtitle {
   font-size: 18px;
-  color: rgba(255,255,255,0.75);
+  color: var(--text-secondary);
   margin-bottom: 36px;
 }
 
@@ -539,25 +544,25 @@ onUnmounted(() => {
 }
 
 .hero-search-input :deep(.el-input__wrapper) {
-  background: rgba(255,255,255,0.12) !important;
-  border: 1px solid rgba(255,255,255,0.2) !important;
-  border-radius: 24px !important;
-  box-shadow: none !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-pill) !important;
+  box-shadow: var(--shadow-light) !important;
   padding: 4px 16px;
 }
 
 .hero-search-input :deep(.el-input__inner) {
-  color: #fff !important;
+  color: var(--text-primary) !important;
 }
 
 .hero-search-input :deep(.el-input__inner::placeholder) {
-  color: rgba(255,255,255,0.6) !important;
+  color: var(--text-secondary) !important;
 }
 
 .hero-search-input :deep(.el-input-group__append) {
   background: var(--color-primary);
   border: none;
-  border-radius: 0 24px 24px 0;
+  border-radius: 0 var(--radius-pill) var(--radius-pill) 0;
   color: #fff;
 }
 

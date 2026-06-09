@@ -35,16 +35,16 @@
           <el-table-column prop="orderNo" label="订单号" width="170" show-overflow-tooltip />
           <el-table-column prop="movieName" label="影片" min-width="130" show-overflow-tooltip />
           <el-table-column prop="hallName" label="影厅" width="100" />
-          <el-table-column label="座位" width="120">
-            <template #default="{ row }">{{ formatSeats(row) }}</template>
+          <el-table-column label="座位" width="160">
+            <template #default="{ row }"><span style="white-space: nowrap;">{{ formatSeats(row) }}</span></template>
           </el-table-column>
-          <el-table-column label="金额" width="90">
+          <el-table-column label="金额" width="100">
             <template #default="{ row }">¥{{ row.totalAmount || row.totalPrice }}</template>
           </el-table-column>
           <el-table-column label="状态" width="90">
             <template #default="{ row }">
-              <el-tag :type="statusType(row.status || row.orderStatus)" size="small">
-                {{ statusLabel(row.status || row.orderStatus) }}
+              <el-tag :type="statusType(row.status ?? row.orderStatus)" size="small">
+                {{ statusLabel(row.status ?? row.orderStatus) }}
               </el-tag>
             </template>
           </el-table-column>
@@ -56,6 +56,20 @@
           </el-table-column>
           <el-table-column label="用户名" width="100">
             <template #default="{ row }">{{ row.username || '--' }}</template>
+          </el-table-column>
+          <el-table-column label="操作" width="120" fixed="right">
+            <template #default="{ row }">
+              <el-button
+                v-if="(row.status ?? row.orderStatus) === 0"
+                type="primary"
+                size="small"
+                :loading="payingOrderId === row.id"
+                @click="handlePay(row)"
+              >
+                支付
+              </el-button>
+              <span v-else style="color: var(--text-muted); font-size: 12px;">--</span>
+            </template>
           </el-table-column>
         </el-table>
       </div>
@@ -131,9 +145,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getAdminOrders, assistCreateOrder, getSchedulesByMovie, getScheduleSeats } from '@/api/order'
+import { getAdminOrders, assistCreateOrder, assistPayOrder, getSchedulesByMovie, getScheduleSeats } from '@/api/order'
 import { getMovieList } from '@/api/movie'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh } from '@element-plus/icons-vue'
 import NavBar from '@/components/NavBar.vue'
 
@@ -153,6 +167,7 @@ const assistSelectedSchedule = ref(null)
 const assistAvailableSeats = ref([])
 const assistSelectedSeats = ref([])
 const assistSubmitting = ref(false)
+const payingOrderId = ref(null)
 
 const filteredOrders = computed(() => {
   let list = orders.value
@@ -186,11 +201,11 @@ const canNextStep = computed(() => {
 
 function statusLabel(s) {
   const map = { 0: '待支付', 1: '待观影', 2: '已完成', 3: '已改签', 4: '已退票', 5: '已过期' }
-  return map[s] !== undefined ? map[s] : (s || '--')
+  return map[s] !== undefined ? map[s] : (s ?? '--')
 }
 function statusType(s) {
-  const map = { 0: 'warning', 1: '', 2: 'success', 3: 'info', 4: 'danger', 5: 'info' }
-  return map[s] || 'info'
+  const map = { 0: 'warning', 1: 'primary', 2: 'success', 3: 'info', 4: 'danger', 5: 'info' }
+  return map[s] ?? 'info'
 }
 
 function formatDateTime(s) {
@@ -285,7 +300,13 @@ async function handleNextStep() {
         const flatSeats = data.seats[0] && Array.isArray(data.seats[0]) ? data.seats.flat() : data.seats
         assistAvailableSeats.value = flatSeats
           .filter(s => s.status === 0)
-          .map(s => `${s.seatRow || s.row}-${String(s.seatCol || s.col).padStart(2, '0')}`)
+          .map(s => {
+            // Use seatNumber from backend if available, otherwise construct from row letter + col
+            if (s.seatNumber) return s.seatNumber
+            const rowLetter = String.fromCharCode(64 + (s.seatRow || s.row || 1))
+            const colNum = String(s.seatCol || s.col || 1).padStart(2, '0')
+            return rowLetter + '-' + colNum
+          })
       } else {
         // Generate placeholder seats
         const rows = data.rowCount || 8
@@ -323,9 +344,37 @@ async function doAssistCreate() {
     })
     ElMessage.success('代客下单成功')
     assistVisible.value = false
-    fetchOrders()
-  } catch (err) { /* handled */ }
-  finally { assistSubmitting.value = false }
+    // 必须等待订单列表刷新完毕，避免支付时拿到旧数据
+    await fetchOrders()
+  } catch (err) {
+    console.error('代客下单失败:', err)
+  } finally {
+    assistSubmitting.value = false
+  }
+}
+
+async function handlePay(row) {
+  try {
+    await ElMessageBox.confirm(
+      `确认为订单 ${row.orderNo} 支付 ¥${row.totalAmount || row.totalPrice}？`,
+      '确认支付',
+      { confirmButtonText: '确认支付', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch { return }
+  if (!row.id) {
+    ElMessage.error('订单ID无效，请刷新页面后重试')
+    return
+  }
+  payingOrderId.value = row.id
+  try {
+    await assistPayOrder(row.id)
+    ElMessage.success('支付成功')
+    await fetchOrders()
+  } catch (err) {
+    console.error('代客支付失败:', err, '订单ID:', row.id)
+  } finally {
+    payingOrderId.value = null
+  }
 }
 
 onMounted(fetchOrders)

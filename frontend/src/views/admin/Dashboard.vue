@@ -67,8 +67,8 @@
                 </el-table-column>
                 <el-table-column label="状态" width="100">
                   <template #default="{ row }">
-                    <el-tag :type="statusType(row.status || row.orderStatus)" size="small">
-                      {{ statusLabel(row.status || row.orderStatus) }}
+                    <el-tag :type="statusType(row.status ?? row.orderStatus)" size="small">
+                      {{ statusLabel(row.status ?? row.orderStatus) }}
                     </el-tag>
                   </template>
                 </el-table-column>
@@ -142,12 +142,12 @@ const quickActions = [
 
 function statusLabel(status) {
   const map = { 0: '待支付', 1: '待观影', 2: '已完成', 3: '已改签', 4: '已退票', 5: '已过期' }
-  return map[status] !== undefined ? map[status] : (status || '--')
+  return map[status] !== undefined ? map[status] : (status ?? '--')
 }
 
 function statusType(status) {
-  const map = { 0: 'warning', 1: '', 2: 'success', 3: 'info', 4: 'danger', 5: 'info' }
-  return map[status] || 'info'
+  const map = { 0: 'warning', 1: 'primary', 2: 'success', 3: 'info', 4: 'danger', 5: 'info' }
+  return map[status] ?? 'info'
 }
 
 function formatDateTime(dateStr) {

@@ -1,12 +1,10 @@
 <template>
   <div class="register-page">
-    <div class="register-bg"></div>
-
-    <div class="register-card">
+    <div class="register-container">
       <div class="card-header">
         <router-link to="/home" class="back-home">
-          <el-icon><ArrowLeft /></el-icon>
-          返回首页
+          <el-icon :size="14"><ArrowLeft /></el-icon>
+          <span>返回首页</span>
         </router-link>
         <h2>创建账号</h2>
         <p>加入TTMS，开启您的观影之旅</p>
@@ -88,9 +86,8 @@
             class="register-btn"
             :loading="loading"
             @click="handleRegister"
-            round
           >
-            注 册
+            注册
           </el-button>
         </el-form-item>
       </el-form>
@@ -189,7 +186,7 @@ async function handleRegister() {
     ElMessage.success('注册成功，请登录')
     router.push('/login')
   } catch (err) {
-    // Error handled by interceptor
+    // handled by interceptor
   } finally {
     loading.value = false
   }
@@ -197,77 +194,65 @@ async function handleRegister() {
 </script>
 
 <style scoped>
+/* ============================================================
+   Register Page — Apple aesthetic, dual theme
+   ============================================================ */
 .register-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  overflow: hidden;
+  padding: 24px;
+  background: var(--bg-primary);
+  transition: background 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
-.register-bg {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%);
-  z-index: 0;
-}
-
-.register-bg::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background:
-    radial-gradient(circle at 20% 80%, rgba(233, 69, 96, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(64, 158, 255, 0.08) 0%, transparent 50%);
-}
-
-.register-card {
-  position: relative;
-  z-index: 1;
-  width: 680px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
+.register-container {
+  width: 620px;
+  background: var(--bg-card);
   border-radius: var(--radius-xl);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-heavy);
   padding: 40px 48px;
 }
 
+/* ---- Header ---- */
 .card-header {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 36px;
 }
 
 .back-home {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary);
   font-size: 13px;
-  margin-bottom: 16px;
-  transition: color 0.2s;
+  font-weight: 500;
+  margin-bottom: 20px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: color 0.2s ease;
 }
 
 .back-home:hover {
-  color: #e94560;
+  color: var(--color-primary);
 }
 
 .card-header h2 {
   font-size: 28px;
   font-weight: 700;
-  color: #fff;
-  margin-bottom: 8px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  letter-spacing: -0.022em;
 }
 
 .card-header p {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary);
 }
 
+/* ---- Form ---- */
 .form-row {
   display: flex;
   gap: 20px;
@@ -280,50 +265,36 @@ async function handleRegister() {
 .register-btn {
   width: 100%;
   height: 44px;
-  font-size: 16px;
-  letter-spacing: 4px;
-  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: var(--radius-md);
+  margin-top: 4px;
 }
 
 .form-footer {
   text-align: center;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 8px;
 }
 
 .login-link {
-  color: #e94560;
+  color: var(--color-primary);
   font-weight: 600;
   margin-left: 4px;
+  transition: opacity 0.2s ease;
 }
 
 .login-link:hover {
-  text-decoration: underline;
+  opacity: 0.8;
 }
 
-/* Override form label color */
-:deep(.el-form-item__label) {
-  color: rgba(255, 255, 255, 0.7) !important;
-}
-
-:deep(.el-input__wrapper) {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  box-shadow: none !important;
-}
-
-:deep(.el-input__inner) {
-  color: #fff !important;
-}
-
-:deep(.el-input__inner::placeholder) {
-  color: rgba(255, 255, 255, 0.5) !important;
-}
-
+/* ---- Responsive ---- */
 @media (max-width: 768px) {
-  .register-card {
-    width: 90%;
-    padding: 24px;
+  .register-container {
+    width: 100%;
+    padding: 28px 24px;
   }
   .form-row {
     flex-direction: column;

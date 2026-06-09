@@ -19,7 +19,7 @@
           <el-table-column label="结束时间" width="160">
             <template #default="{ row }">{{ formatDateTime(row.endTime) }}</template>
           </el-table-column>
-          <el-table-column label="票价" width="80">
+          <el-table-column label="票价" width="100">
             <template #default="{ row }">¥{{ row.price || '--' }}</template>
           </el-table-column>
           <el-table-column label="已售/总座位" width="120">
@@ -139,12 +139,12 @@ const availableHalls = computed(() => halls.value)
 
 function statusLabel(s) {
   const map = { 0: '已取消', 1: '正常放映', 2: '已结束' }
-  return map[s] !== undefined ? map[s] : (s || '--')
+  return map[s] !== undefined ? map[s] : (s ?? '--')
 }
 
 function statusType(s) {
   const map = { 0: 'danger', 1: 'success', 2: 'info' }
-  return map[s] || 'info'
+  return map[s] ?? 'info'
 }
 
 function formatDateTime(s) {

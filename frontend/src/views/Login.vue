@@ -1,37 +1,34 @@
 <template>
   <div class="login-page">
-    <div class="login-bg"></div>
-
     <div class="login-container">
-      <!-- Left: decorative -->
+      <!-- Left: brand area -->
       <div class="login-left">
         <div class="brand-area">
           <div class="brand-icon">
-            <el-icon :size="48"><VideoCameraFilled /></el-icon>
+            <el-icon :size="44"><VideoCameraFilled /></el-icon>
           </div>
           <h1 class="brand-name">TTMS</h1>
-          <p class="brand-desc">Cinema Management System</p>
-          <p class="brand-sub">电影院综合管理系统</p>
+          <p class="brand-desc">电影院综合管理系统</p>
         </div>
         <div class="feature-list">
           <div class="feature-item">
-            <el-icon><Film /></el-icon>
+            <el-icon :size="18"><Film /></el-icon>
             <span>海量影片 随心选择</span>
           </div>
           <div class="feature-item">
-            <el-icon><Select /></el-icon>
+            <el-icon :size="18"><Select /></el-icon>
             <span>在线选座 便捷购票</span>
           </div>
           <div class="feature-item">
-            <el-icon><Management /></el-icon>
+            <el-icon :size="18"><Management /></el-icon>
             <span>智能管理 高效运营</span>
           </div>
         </div>
       </div>
 
-      <!-- Right: unified login form -->
+      <!-- Right: login form -->
       <div class="login-right">
-        <div class="login-form-wrapper">
+        <div class="form-card">
           <h2 class="form-title">欢迎回来</h2>
           <p class="form-subtitle">登录您的账户，系统将自动识别身份</p>
 
@@ -45,7 +42,7 @@
             <el-form-item prop="username">
               <el-input
                 v-model="form.username"
-                placeholder="请输入用户名"
+                placeholder="用户名"
                 :prefix-icon="User"
               />
             </el-form-item>
@@ -54,7 +51,7 @@
               <el-input
                 v-model="form.password"
                 type="password"
-                placeholder="请输入密码"
+                placeholder="密码"
                 :prefix-icon="Lock"
                 show-password
               />
@@ -66,9 +63,8 @@
                 class="login-btn"
                 :loading="loading"
                 @click="handleLogin"
-                round
               >
-                登 录
+                登录
               </el-button>
             </el-form-item>
           </el-form>
@@ -125,7 +121,6 @@ async function handleLogin() {
     await authStore.login({ username: form.username, password: form.password })
     ElMessage.success('登录成功，欢迎回来！')
 
-    // 根据角色跳转
     const redirect = route.query.redirect
     if (redirect) {
       router.push(redirect)
@@ -135,7 +130,7 @@ async function handleLogin() {
       router.push('/home')
     }
   } catch (err) {
-    // 错误由axios拦截器统一处理
+    // handled by axios interceptor
   } finally {
     loading.value = false
   }
@@ -143,185 +138,172 @@ async function handleLogin() {
 </script>
 
 <style scoped>
+/* ============================================================
+   Login Page — Apple aesthetic, dual theme
+   ============================================================ */
 .login-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.login-bg {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%);
-  z-index: 0;
-}
-
-.login-bg::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background:
-    radial-gradient(circle at 30% 70%, rgba(233, 69, 96, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 70% 30%, rgba(64, 158, 255, 0.08) 0%, transparent 50%);
-  animation: bgMove 20s ease-in-out infinite;
-}
-
-@keyframes bgMove {
-  0%, 100% { transform: translate(0, 0); }
-  33% { transform: translate(2%, -1%); }
-  66% { transform: translate(-1%, 2%); }
+  padding: 24px;
+  background: var(--bg-primary);
+  transition: background 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .login-container {
-  position: relative;
-  z-index: 1;
   display: flex;
-  width: 1000px;
-  min-height: 560px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
+  width: 920px;
+  min-height: 540px;
   border-radius: var(--radius-xl);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
   overflow: hidden;
+  box-shadow: var(--shadow-heavy);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
 }
 
+/* ---- Left Panel ---- */
 .login-left {
   flex: 1;
-  background: linear-gradient(135deg, rgba(233, 69, 96, 0.15), rgba(64, 158, 255, 0.1));
+  background: var(--bg-secondary);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 48px 40px;
+  padding: 56px 48px;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-left::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -20%;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  opacity: 0.04;
+  pointer-events: none;
 }
 
 .brand-area {
   margin-bottom: 48px;
+  position: relative;
 }
 
 .brand-icon {
-  color: #e94560;
-  margin-bottom: 16px;
+  color: var(--color-primary);
+  margin-bottom: 20px;
+  opacity: 0.85;
 }
 
 .brand-name {
-  font-size: 40px;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: 4px;
-  margin-bottom: 8px;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 3px;
+  margin-bottom: 6px;
 }
 
 .brand-desc {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.75);
-  margin-bottom: 4px;
-}
-
-.brand-sub {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 15px;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
 .feature-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
+  position: relative;
 }
 
 .feature-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary);
   font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 .feature-item .el-icon {
-  color: #d4a853;
-  font-size: 18px;
+  color: var(--color-primary);
+  opacity: 0.6;
 }
 
+/* ---- Right Panel ---- */
 .login-right {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 48px 40px;
+  padding: 56px 48px;
+  background: var(--bg-card);
 }
 
-.login-form-wrapper {
+.form-card {
   width: 100%;
-  max-width: 360px;
+  max-width: 340px;
 }
 
 .form-title {
   font-size: 28px;
   font-weight: 700;
-  color: #fff;
-  margin-bottom: 8px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  letter-spacing: -0.022em;
 }
 
 .form-subtitle {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 36px;
+  color: var(--text-secondary);
+  margin-bottom: 40px;
+  line-height: 1.5;
 }
 
 .login-btn {
   width: 100%;
   height: 44px;
-  font-size: 16px;
-  letter-spacing: 4px;
-  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: var(--radius-md);
+  margin-top: 4px;
 }
 
 .form-footer {
   text-align: center;
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 8px;
 }
 
 .register-link {
-  color: #e94560;
+  color: var(--color-primary);
   font-weight: 600;
   margin-left: 4px;
+  transition: opacity 0.2s ease;
 }
 
 .register-link:hover {
-  text-decoration: underline;
+  opacity: 0.8;
 }
 
-/* Override Element Plus input styles for dark background */
-:deep(.el-input__wrapper) {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  box-shadow: none !important;
-}
-
-:deep(.el-input__inner) {
-  color: #fff !important;
-}
-
-:deep(.el-input__inner::placeholder) {
-  color: rgba(255, 255, 255, 0.5) !important;
-}
-
+/* ---- Responsive ---- */
 @media (max-width: 768px) {
   .login-container {
     flex-direction: column;
-    width: 90%;
+    width: 100%;
     min-height: auto;
   }
   .login-left {
     display: none;
+  }
+  .login-right {
+    padding: 40px 28px;
   }
 }
 </style>

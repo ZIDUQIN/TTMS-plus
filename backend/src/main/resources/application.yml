@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   servlet:
     encoding:
       charset: UTF-8
@@ -11,9 +11,9 @@ spring:
     name: TTMS
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/TTMS?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true
-    username: root
-    password: "123456"
+    url: ${DB_URL:jdbc:mysql://localhost:3306/TTMS?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
     type: com.alibaba.druid.pool.DruidDataSource
     druid:
       initial-size: 5
@@ -30,10 +30,7 @@ spring:
 
   sql:
     init:
-      mode: always
-      continue-on-error: true
-      schema-locations: classpath:schema.sql
-      encoding: UTF-8
+      mode: never
 
   servlet:
     multipart:
@@ -50,7 +47,6 @@ spring:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       id-type: auto
@@ -61,17 +57,16 @@ mybatis-plus:
 
 # JWT配置
 jwt:
-  secret: TTMS2024CinemaManagementSystemSecretKeyForJWTTokenGenerationAndValidation
-  expiration: 86400000  # 24小时(毫秒)
+  secret: ${JWT_SECRET:TTMS2024CinemaManagementSystemSecretKeyForJWTTokenGenerationAndValidation}
+  expiration: ${JWT_EXPIRATION:86400000}
 
 # 文件上传配置
 file:
   upload:
-    path: ./uploads/
-    max-size: 10MB
+    path: ${UPLOAD_PATH:./uploads/}
 
 # 系统默认管理员
 system:
   admin:
-    username: admin
-    password: admin123
+    username: ${ADMIN_USERNAME:admin}
+    password: ${ADMIN_PASSWORD:admin123}

@@ -8,7 +8,11 @@
   <!-- 同步应用主题，防止页面加载闪烁 -->
   <script>
     (function() {
-      var theme = localStorage.getItem('ttms-theme') || 'white';
+      var theme = localStorage.getItem('ttms-theme');
+      if (theme !== 'light' && theme !== 'dark') {
+        // No saved preference — follow system
+        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>

@@ -47,7 +47,7 @@ function parseStoredUser() {
       roleCode: data.roleCode,
       roleName: data.roleName,
       permissions: data.permissions || [],
-      theme: data.theme || 'white',
+      theme: data.theme || 'light',
       nickname: data.nickname
     }
     localStorage.setItem('token', data.token)

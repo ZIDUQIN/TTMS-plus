@@ -6,9 +6,11 @@
       <div class="bo-top-bar">
         <div class="bo-top-left">
           <el-date-picker
-            v-model="queryDate"
-            type="date"
-            placeholder="选择日期"
+            v-model="dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
             value-format="YYYY-MM-DD"
             :clearable="false"
             class="bo-date-picker"
@@ -174,7 +176,7 @@
               <!-- 核心数据 -->
               <div class="movie-stats" v-if="selectedMovie">
                 <div class="stat-row">
-                  <span class="stat-label">今日综合票房</span>
+                  <span class="stat-label">综合票房</span>
                   <span class="stat-value accent">¥{{ selectedMovie.boxOffice }}</span>
                 </div>
                 <div class="stat-row">
@@ -182,7 +184,7 @@
                   <span class="stat-value accent">{{ selectedMovie.boxOfficeRatio }}%</span>
                 </div>
                 <div class="stat-row">
-                  <span class="stat-label">今日排片场次</span>
+                  <span class="stat-label">排片场次</span>
                   <span class="stat-value">{{ selectedMovie.scheduleCount }}</span>
                 </div>
                 <div class="stat-row">
@@ -240,9 +242,33 @@ import {
 import NavBar from '@/components/NavBar.vue'
 import { FullScreen, CopyDocument, VideoCameraFilled } from '@element-plus/icons-vue'
 
+// ========== 持久化 key ==========
+const STORAGE_KEY_DATE = 'boxoffice_dateRange'
+const STORAGE_KEY_TYPE = 'boxoffice_type'
+
+function loadDateRange() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_DATE)
+    if (raw) {
+      const arr = JSON.parse(raw)
+      if (Array.isArray(arr) && arr.length === 2 && arr[0] && arr[1]) {
+        return arr
+      }
+    }
+  } catch {}
+  const t = getTodayStr()
+  return [t, t]
+}
+
+function saveDateRange(range) {
+  try {
+    localStorage.setItem(STORAGE_KEY_DATE, JSON.stringify(range))
+  } catch {}
+}
+
 // ========== 状态 ==========
-const queryDate = ref(getTodayStr())
-const boxOfficeType = ref('comprehensive')
+const dateRange = ref(loadDateRange())
+const boxOfficeType = ref(localStorage.getItem(STORAGE_KEY_TYPE) || 'comprehensive')
 const rankingData = ref([])
 const dashboard = ref({ totalBoxOffice: 0, totalTickets: 0, totalSchedules: 0 })
 const selectedMovieId = ref(null)
@@ -251,7 +277,7 @@ const trendData = ref([])
 const loading = ref(false)
 let refreshTimer = null
 
-const statLabels = ['今日综合票房', '票房占比', '今日排片场次', '排片占比', '场均人次', '上座率']
+const statLabels = ['综合票房', '票房占比', '排片场次', '排片占比', '场均人次', '上座率']
 
 // ========== 工具函数 ==========
 function getTodayStr() {
@@ -282,7 +308,7 @@ function getBarHeight(value) {
 }
 
 function getBarGradient(date) {
-  return date === queryDate.value
+  return date === dateRange.value[1]
     ? 'linear-gradient(to top, #ff6b35, #ff8c5a)'
     : 'linear-gradient(to top, #c0c4cc, #dcdfe6)'
 }
@@ -290,13 +316,13 @@ function getBarGradient(date) {
 // ========== 数据请求 ==========
 async function fetchAllData() {
   loading.value = true
-  const date = queryDate.value
+  const [startDate, endDate] = dateRange.value
   const type = boxOfficeType.value
 
   try {
     const [rankRes, dashRes] = await Promise.allSettled([
-      getBoxOfficeRanking(date, type),
-      getBoxOfficeDashboard(date, type)
+      getBoxOfficeRanking(startDate, endDate, type),
+      getBoxOfficeDashboard(startDate, endDate, type)
     ])
 
     if (rankRes.status === 'fulfilled' && rankRes.value && rankRes.value.data) {
@@ -320,7 +346,7 @@ async function fetchAllData() {
     loading.value = false
     if (selectedMovieId.value) {
       try {
-        const trendRes = await getBoxOfficeMovieTrend(selectedMovieId.value, date, type)
+        const trendRes = await getBoxOfficeMovieTrend(selectedMovieId.value, endDate, type, 7)
         if (trendRes && trendRes.data) {
           trendData.value = trendRes.data
         }
@@ -346,7 +372,8 @@ function onRowClick(row) { selectMovie(row) }
 async function fetchTrend() {
   if (!selectedMovieId.value) return
   try {
-    const res = await getBoxOfficeMovieTrend(selectedMovieId.value, queryDate.value, boxOfficeType.value)
+    const endDate = dateRange.value[1]
+    const res = await getBoxOfficeMovieTrend(selectedMovieId.value, endDate, boxOfficeType.value, 7)
     if (res && res.data) {
       trendData.value = res.data
     }
@@ -358,10 +385,14 @@ async function fetchTrend() {
 function switchType(type) {
   if (boxOfficeType.value === type) return
   boxOfficeType.value = type
+  localStorage.setItem(STORAGE_KEY_TYPE, type)
   fetchAllData()
 }
 
-function onDateChange() { fetchAllData() }
+function onDateChange() {
+  saveDateRange(dateRange.value)
+  fetchAllData()
+}
 
 // ========== 定时器 ==========
 function startAutoRefresh() {
@@ -406,7 +437,7 @@ onUnmounted(() => {
 /* 顶部栏 */
 .bo-top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
 .bo-top-left { display: flex; align-items: center; gap: 16px; }
-.bo-date-picker { width: 160px; }
+.bo-date-picker { width: 260px; }
 .bo-tabs { display: flex; }
 .bo-tab { padding: 6px 16px; font-size: 14px; font-weight: 500; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; }
 .bo-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }

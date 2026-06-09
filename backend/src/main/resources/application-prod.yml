@@ -1,0 +1,39 @@
+# ============================================================
+# TTMS 生产环境配置（华为云部署专用）
+# 激活方式: java -jar ttms.jar --spring.profiles.active=prod
+# ============================================================
+
+spring:
+  datasource:
+    # 生产环境建议通过环境变量注入，不在此写死密码
+    # 华为云 RDS MySQL 地址示例: jdbc:mysql://192.168.x.x:3306/TTMS?...
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    druid:
+      initial-size: 10
+      min-idle: 10
+      max-active: 50
+
+  sql:
+    init:
+      mode: never   # 生产环境绝不自动执行SQL脚本
+
+mybatis-plus:
+  configuration:
+    # 生产环境关闭SQL日志，避免磁盘写满
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+# 文件上传使用华为云ECS持久化目录
+file:
+  upload:
+    path: ${UPLOAD_PATH:/data/ttms/uploads/}
+
+# 日志级别：生产环境只记录WARN及以上
+logging:
+  level:
+    root: WARN
+    com.ttms: INFO
+  file:
+    path: ${LOG_PATH:/data/ttms/logs/}
+    name: ${LOG_PATH:/data/ttms/logs/}/ttms.log

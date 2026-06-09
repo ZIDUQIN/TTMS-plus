@@ -27,7 +27,7 @@ public interface ScheduleMapper extends BaseMapper<Schedule> {
             "FROM schedule s " +
             "LEFT JOIN movie m ON s.movie_id = m.id " +
             "LEFT JOIN hall h ON s.hall_id = h.id " +
-            "WHERE s.movie_id = #{movieId} AND s.deleted = 0 " +
+            "WHERE s.movie_id = #{movieId} AND s.start_time > NOW() AND s.status = 1 AND s.deleted = 0 " +
             "ORDER BY s.start_time ASC")
     List<Schedule> selectByMovieId(@Param("movieId") Long movieId);
 
@@ -94,4 +94,19 @@ public interface ScheduleMapper extends BaseMapper<Schedule> {
             "JOIN hall h ON s.hall_id = h.id " +
             "WHERE DATE(s.start_time) = #{date} AND s.deleted = 0")
     List<Schedule> selectByDateWithHall(@Param("date") String date);
+
+    /**
+     * 按日期范围查询所有场次（含影厅容量信息）
+     * 用于票房排片统计——支持单日和日期范围
+     *
+     * @param startDate 开始日期（含）
+     * @param endDate   结束日期（含）
+     * @return 场次列表（含hallRowCount, hallColCount非数据库字段）
+     */
+    @Select("SELECT s.*, h.row_count AS hallRowCount, h.col_count AS hallColCount " +
+            "FROM schedule s " +
+            "JOIN hall h ON s.hall_id = h.id " +
+            "WHERE DATE(s.start_time) BETWEEN #{startDate} AND #{endDate} AND s.deleted = 0")
+    List<Schedule> selectByDateRangeWithHall(@Param("startDate") String startDate,
+                                              @Param("endDate") String endDate);
 }

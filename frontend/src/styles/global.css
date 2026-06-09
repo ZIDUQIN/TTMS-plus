@@ -1,4 +1,61 @@
-/* ========== Reset & Base ========== */
+/* ============================================================
+   TTMS Apple Design System — Global Styles
+   Target: 1:1 Apple.com visual & interaction style
+   ============================================================ */
+
+/* ---------- Font Face ---------- */
+/* SF Pro Text — Apple's system font via @font-face for consistency */
+@font-face {
+  font-family: 'SF Pro Text';
+  src: local('SF Pro Text'), local('SFProText-Regular');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Text';
+  src: local('SF Pro Text'), local('SFProText-Medium');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Text';
+  src: local('SF Pro Text'), local('SFProText-Semibold');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Text';
+  src: local('SF Pro Text'), local('SFProText-Bold');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  src: local('SF Pro Display'), local('SFProDisplay-Regular');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  src: local('SF Pro Display'), local('SFProDisplay-Semibold');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  src: local('SF Pro Display'), local('SFProDisplay-Bold');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------- Reset & Base ---------- */
 *,
 *::before,
 *::after {
@@ -10,18 +67,30 @@
 html {
   font-size: 16px;
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB',
-    'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
-  -webkit-font-smoothing: auto;
-  -moz-osx-font-smoothing: auto;
-  line-height: 1.6;
+  font-family:
+    'SF Pro Text',
+    'SF Pro Display',
+    'PingFang SC',
+    'Noto Sans SC',
+    'Microsoft YaHei',
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.47059;
   font-weight: 400;
-  transition: background-color 0.3s ease, color 0.3s ease;
-  /* Improve text rendering clarity */
+  letter-spacing: -0.022em;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
   text-rendering: optimizeLegibility;
+  font-feature-settings: "kern";
+  font-kerning: normal;
 }
 
 a {
@@ -38,108 +107,200 @@ img {
   display: block;
 }
 
-/* ========== Theme: White (Default Business Style) ========== */
+/* ============================================================
+   THEME: Light (日间模式) — Apple.com light aesthetic
+   ============================================================ */
 :root,
-[data-theme='white'] {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f7fa;
-  --bg-sidebar: #1d1e2c;
-  --bg-card: #ffffff;
-  --bg-hover: #f0f2f5;
-  --text-primary: #1a1a1a;
-  --text-secondary: #222222;
-  --text-muted: #444444;
-  --color-primary: #3370ff;
-  --color-primary-light: #5c8fff;
-  --color-primary-dark: #1e4fcc;
-  --color-success: #52b818;
-  --color-warning: #e08c00;
-  --color-danger: #e03a3a;
-  --color-info: #444444;
-  --color-accent: #ff6b35;
-  --color-accent-light: #ff8c5a;
-  --color-gold: #b8860b;
-  --border-color: #c8c8c8;
-  --border-light: #dcdcdc;
-  --shadow-light: 0 2px 12px rgba(0, 0, 0, 0.08);
-  --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.12);
-  --shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.16);
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --header-height: 64px;
-  --sidebar-width: 240px;
+[data-theme='light'] {
+  /* Background hierarchy */
+  --bg-primary:        #f5f5f7;
+  --bg-secondary:      #fafafa;
+  --bg-sidebar:        #f5f5f7;
+  --bg-card:           #ffffff;
+  --bg-hover:          #e8e8ed;
+  --bg-glass:          rgba(255, 255, 255, 0.72);
+
+  /* Text hierarchy */
+  --text-primary:      #1d1d1f;
+  --text-secondary:    #6e6e73;
+  --text-tertiary:     #8e8e93;
+  --text-muted:        #8e8e93;
+
+  /* Brand & semantic */
+  --color-primary:     #007aff;
+  --color-primary-light: #409cff;
+  --color-primary-dark:  #0056cc;
+  --color-success:     #34c759;
+  --color-warning:     #ff9500;
+  --color-danger:      #ff3b30;
+  --color-info:        #5ac8fa;
+  --color-accent:      #ff6b35;
+  --color-accent-light:#ff8c5a;
+  --color-gold:        #ff9f0a;
+
+  /* Borders */
+  --border-color:      rgba(0, 0, 0, 0.12);
+  --border-light:      rgba(0, 0, 0, 0.06);
+  --border-alpha:      rgba(0, 0, 0, 0.10);
+
+  /* Shadows — Apple's soft, layered approach */
+  --shadow-light:      0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-medium:     0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.04);
+  --shadow-heavy:      0 12px 32px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.10), 0 3px 8px rgba(0, 0, 0, 0.06);
+
+  /* Radii — Apple's rounded aesthetic */
+  --radius-sm:          4px;
+  --radius-md:          8px;
+  --radius-lg:         12px;
+  --radius-xl:         16px;
+  --radius-2xl:        20px;
+  --radius-pill:       980px;
+
+  /* Layout */
+  --header-height:     52px;
+  --sidebar-width:     240px;
+  --grid-unit:          8px;
+
+  /* Glass morphism — amplified for visible depth */
+  --glass-blur:         saturate(220%) blur(30px);
+  --glass-bg:           rgba(255, 255, 255, 0.78);
+  --glass-border:       rgba(0, 0, 0, 0.12);
 }
 
-/* ========== Theme: Dark (Cinema Night Style) ========== */
+/* ============================================================
+   THEME: Dark (夜间模式) — Apple.com dark aesthetic
+   ============================================================ */
 [data-theme='dark'] {
-  --bg-primary: #1a1a2e;
-  --bg-secondary: #16213e;
-  --bg-sidebar: #0f0f23;
-  --bg-card: #1e2a4a;
-  --bg-hover: #253558;
-  --text-primary: #f0f0f8;
-  --text-secondary: #c8cdd8;
-  --text-muted: #b4b9c8;
-  --color-primary: #e94560;
-  --color-primary-light: #ff6b81;
-  --color-primary-dark: #c23152;
-  --color-success: #2ed573;
-  --color-warning: #ffa502;
-  --color-danger: #ff4757;
-  --color-info: #b0b8cc;
-  --color-accent: #d4a853;
-  --color-accent-light: #f0c674;
-  --color-gold: #d4a853;
-  --border-color: #3d4f78;
-  --border-light: #2e3d5c;
-  --shadow-light: 0 2px 12px rgba(0, 0, 0, 0.3);
-  --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.4);
-  --shadow-heavy: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --header-height: 64px;
-  --sidebar-width: 240px;
+  /* Background hierarchy */
+  --bg-primary:        #000000;
+  --bg-secondary:      #0a0a0a;
+  --bg-sidebar:        #0a0a0a;
+  --bg-card:           #1d1d1f;
+  --bg-hover:          #2d2d2f;
+  --bg-glass:          rgba(29, 29, 31, 0.72);
+
+  /* Text hierarchy */
+  --text-primary:      #f5f5f7;
+  --text-secondary:    #98989d;
+  --text-tertiary:     #86868b;
+  --text-muted:        #86868b;
+
+  /* Brand & semantic */
+  --color-primary:     #0a84ff;
+  --color-primary-light: #409cff;
+  --color-primary-dark:  #0066d6;
+  --color-success:     #30d158;
+  --color-warning:     #ff9f0a;
+  --color-danger:      #ff453a;
+  --color-info:        #64d2ff;
+  --color-accent:      #ff6b35;
+  --color-accent-light:#ff8c5a;
+  --color-gold:        #ff9f0a;
+
+  /* Borders */
+  --border-color:      rgba(255, 255, 255, 0.16);
+  --border-light:      rgba(255, 255, 255, 0.08);
+  --border-alpha:      rgba(255, 255, 255, 0.15);
+
+  /* Shadows — subtle glow in dark mode */
+  --shadow-light:      0 1px 3px rgba(0, 0, 0, 0.20), 0 1px 2px rgba(0, 0, 0, 0.12);
+  --shadow-medium:     0 4px 12px rgba(0, 0, 0, 0.30), 0 2px 6px rgba(0, 0, 0, 0.20);
+  --shadow-heavy:      0 12px 32px rgba(0, 0, 0, 0.40), 0 4px 12px rgba(0, 0, 0, 0.24);
+  --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.45), 0 3px 8px rgba(0, 0, 0, 0.30);
+
+  /* Radii — identical to light mode */
+  --radius-sm:          4px;
+  --radius-md:          8px;
+  --radius-lg:         12px;
+  --radius-xl:         16px;
+  --radius-2xl:        20px;
+  --radius-pill:       980px;
+
+  /* Layout */
+  --header-height:     52px;
+  --sidebar-width:     240px;
+  --grid-unit:          8px;
+
+  /* Glass morphism — amplified for visible depth */
+  --glass-blur:         saturate(220%) blur(30px);
+  --glass-bg:           rgba(29, 29, 31, 0.82);
+  --glass-border:       rgba(255, 255, 255, 0.18);
 }
 
-/* ========== Global Style Overrides ========== */
+/* ============================================================
+   Global Body Styling
+   ============================================================ */
 body {
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-primary);
   color: var(--text-primary);
 }
 
-/* Override Element Plus variables */
+/* ============================================================
+   Element Plus Global Variable Overrides
+   ============================================================ */
 :root {
   --el-color-primary: var(--color-primary);
+  --el-color-primary-light-3: var(--color-primary-light);
+  --el-color-primary-light-5: var(--color-primary-light);
+  --el-color-primary-light-7: var(--color-primary-light);
+  --el-color-primary-light-9: var(--color-primary-light);
+  --el-color-primary-dark-2: var(--color-primary-dark);
+  --el-color-success: var(--color-success);
+  --el-color-warning: var(--color-warning);
+  --el-color-danger: var(--color-danger);
   --el-color-info: var(--color-info);
+
   --el-bg-color: var(--bg-primary);
-  --el-bg-color-page: var(--bg-secondary);
+  --el-bg-color-page: var(--bg-primary);
   --el-bg-color-overlay: var(--bg-card);
   --el-text-color-primary: var(--text-primary);
   --el-text-color-regular: var(--text-secondary);
-  --el-text-color-secondary: var(--text-muted);
+  --el-text-color-secondary: var(--text-tertiary);
   --el-text-color-placeholder: var(--text-muted);
   --el-text-color-disabled: var(--text-muted);
   --el-border-color: var(--border-color);
   --el-border-color-light: var(--border-light);
   --el-border-color-lighter: var(--border-light);
+  --el-border-color-dark: var(--border-color);
   --el-fill-color-blank: var(--bg-card);
+  --el-fill-color: var(--bg-hover);
   --el-fill-color-light: var(--bg-hover);
   --el-fill-color-lighter: var(--bg-secondary);
+
   --el-border-radius-base: var(--radius-md);
+  --el-border-radius-small: var(--radius-sm);
+  --el-border-radius-round: var(--radius-pill);
   --el-font-size-base: 14px;
+  --el-font-size-small: 13px;
+  --el-font-size-large: 16px;
+
+  --el-box-shadow-light: var(--shadow-light);
+  --el-box-shadow: var(--shadow-medium);
+  --el-box-shadow-dark: var(--shadow-heavy);
 }
 
-/* Ensure dropdown menus have proper contrast */
+/* ============================================================
+   Element Plus Component Refinements
+   ============================================================ */
+
+/* --- Dropdown & Menu --- */
 .el-dropdown-menu {
-  background-color: var(--bg-card) !important;
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-heavy) !important;
+  overflow: hidden;
 }
 
 .el-dropdown-menu__item {
   color: var(--text-primary) !important;
+  border-radius: var(--radius-sm);
+  margin: 2px 6px;
+  padding: 8px 12px !important;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .el-dropdown-menu__item:hover {
@@ -147,52 +308,72 @@ body {
   color: var(--color-primary) !important;
 }
 
-/* Ensure popover/tooltip text is readable */
+/* --- Popover & Tooltip --- */
 .el-popover,
 .el-tooltip__content {
   color: var(--text-primary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-heavy);
 }
 
-/* Disabled button text must be visible */
+/* --- Button --- */
+.el-button {
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.el-button--primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.el-button--primary:hover {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
 .el-button.is-disabled,
 .el-button.is-disabled:hover {
   color: var(--text-muted) !important;
+  background: var(--bg-hover);
+  border-color: var(--border-light);
 }
 
-/* Improve readability of small text globally */
-small,
-.small,
-.el-table {
-  font-size: 14px;
-}
-
-/* Better table header readability */
-.el-table th.el-table__cell {
-  font-weight: 600;
-  color: var(--text-primary);
-  font-size: 14px;
-}
-
-/* Better form label readability */
-.el-form-item__label {
-  font-weight: 500;
-  color: var(--text-primary) !important;
-}
-
-/* Ensure dialog titles are clear */
-.el-dialog__title {
-  font-weight: 700;
+.el-button--default {
+  background: var(--bg-card);
+  border-color: var(--border-color);
   color: var(--text-primary);
 }
 
-/* Better dropdown and menu item readability */
-.el-dropdown-menu__item,
-.el-menu-item {
-  font-size: 14px;
-  font-weight: 400;
+.el-button--default:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+  color: var(--color-primary);
 }
 
-/* Ensure input text is readable */
+/* --- Input --- */
+.el-input__wrapper {
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border-color: var(--border-light);
+  box-shadow: none !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.el-input__wrapper:hover {
+  border-color: var(--border-color);
+}
+
+.el-input__wrapper.is-focus,
+.el-input.is-focus .el-input__wrapper {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.15) !important;
+}
+
 .el-input__inner {
   color: var(--text-primary);
 }
@@ -201,23 +382,348 @@ small,
   color: var(--text-muted);
 }
 
-/* Tag text readability */
-.el-tag {
+/* Textarea */
+.el-textarea__inner {
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+  box-shadow: none !important;
+  transition: border-color 0.2s ease;
+}
+
+.el-textarea__inner:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.15) !important;
+}
+
+.el-textarea__inner::placeholder {
+  color: var(--text-muted);
+}
+
+/* --- Select --- */
+.el-select .el-input__wrapper.is-focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.15) !important;
+}
+
+.el-select-dropdown {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-heavy);
+}
+
+.el-select-dropdown__item {
+  color: var(--text-primary);
+}
+
+.el-select-dropdown__item.is-selected {
+  color: var(--color-primary);
   font-weight: 500;
 }
 
-/* Scrollbar styling */
+.el-select-dropdown__item:hover {
+  background: var(--bg-hover);
+}
+
+/* --- Dialog --- */
+.el-dialog {
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-heavy);
+  overflow: hidden;
+  max-width: 90vw;
+}
+
+.el-dialog__header {
+  padding: 20px 20px 0;
+}
+
+.el-dialog__title {
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.022em;
+  color: var(--text-primary);
+}
+
+.el-dialog__body {
+  padding: 16px 20px 20px;
+}
+
+.el-dialog__footer {
+  padding: 0 20px 20px;
+}
+
+/* Dialog overlay — lightweight, no expensive blur */
+.el-overlay {
+  background: rgba(0, 0, 0, 0.35) !important;
+}
+
+/* --- Table --- */
+.el-table {
+  font-size: 13px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-card);
+  --el-table-border-color: transparent;
+  --el-table-header-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-row-hover-bg-color: var(--bg-hover);
+}
+
+/* Header cells */
+.el-table th.el-table__cell {
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--text-secondary);
+  background: transparent !important;
+  border-bottom: 1px solid var(--border-light) !important;
+  border-right: none !important;
+  padding: 10px 14px;
+}
+
+/* Header cell pseudo-elements (Element Plus internal borders) */
+.el-table th.el-table__cell::after,
+.el-table th.el-table__cell::before {
+  display: none !important;
+}
+
+/* Body cells */
+.el-table td.el-table__cell {
+  border-bottom: none !important;
+  border-right: none !important;
+  padding: 10px 14px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* Kill Element Plus default ellipsis — clip instead */
+.el-table .cell {
+  text-overflow: clip !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+
+/* Body cell pseudo-elements — kill ALL internal borders */
+.el-table td.el-table__cell::after,
+.el-table td.el-table__cell::before {
+  display: none !important;
+}
+
+/* Bordered table — kill everything */
+.el-table--border .el-table__cell {
+  border-right: none !important;
+}
+
+.el-table--border {
+  border: none !important;
+}
+
+.el-table--border .el-table__inner-wrapper::after,
+.el-table--border .el-table__inner-wrapper::before {
+  display: none !important;
+}
+
+/* Zebra striping — extremely subtle */
+.el-table .el-table__body tr:nth-child(even) {
+  background: rgba(128, 128, 128, 0.015);
+}
+
+[data-theme='dark'] .el-table .el-table__body tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+/* Table row hover */
+.el-table__body tr:hover > td.el-table__cell {
+  background: var(--bg-hover) !important;
+}
+
+/* --- Pagination --- */
+.el-pagination {
+  padding: 16px 0 8px;
+}
+
+.el-pagination .el-pager li {
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.el-pagination .el-pager li.is-active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* --- Tag --- */
+.el-tag {
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0;
+  border: none;
+  padding: 3px 10px;
+  line-height: 1.4;
+}
+
+/* Tag variants — high contrast text */
+.el-tag--primary {
+  background: var(--color-primary);
+  color: #ffffff !important;
+}
+
+.el-tag--success {
+  background: var(--color-success);
+  color: #ffffff !important;
+}
+
+.el-tag--warning {
+  background: var(--color-warning);
+  color: #ffffff !important;
+}
+
+.el-tag--danger {
+  background: var(--color-danger);
+  color: #ffffff !important;
+}
+
+.el-tag--info {
+  background: var(--bg-hover);
+  color: var(--text-secondary) !important;
+}
+
+/* Plain / light variant tags — ensure readable */
+.el-tag--primary.is-hit,
+.el-tag--primary .el-tag__content {
+  color: #ffffff;
+}
+
+/* Small size tag */
+.el-tag--small {
+  padding: 1px 8px;
+  font-size: 11px;
+}
+
+/* --- Card (Element Plus) --- */
+.el-card {
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-light);
+  transition: box-shadow 0.15s ease;
+}
+
+.el-card:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+.el-card__header {
+  border-bottom: 1px solid var(--border-light);
+  padding: 14px 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.el-card__body {
+  padding: 16px;
+}
+
+/* --- Form --- */
+.el-form-item {
+  margin-bottom: 16px;
+}
+
+.el-form-item__label {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text-primary) !important;
+  padding-bottom: 4px;
+}
+
+/* --- Tabs --- */
+.el-tabs__item {
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+}
+
+.el-tabs__item.is-active {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.el-tabs__active-bar {
+  background: var(--color-primary);
+}
+
+.el-tabs__nav-wrap::after {
+  background: var(--border-light);
+  height: 1px;
+}
+
+/* --- Switch --- */
+.el-switch__label {
+  color: var(--text-primary);
+}
+
+.el-switch.is-checked .el-switch__core {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* --- Checkbox / Radio --- */
+.el-checkbox__label {
+  color: var(--text-primary);
+}
+
+.el-radio__label {
+  color: var(--text-primary);
+}
+
+/* --- DatePicker --- */
+.el-date-editor .el-range-input {
+  color: var(--text-primary);
+}
+
+.el-date-editor .el-range-separator {
+  color: var(--text-secondary);
+}
+
+/* --- Notification / Message --- */
+.el-message {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-heavy);
+  border: 1px solid var(--border-light);
+}
+
+/* --- Skeleton --- */
+.el-skeleton {
+  border-radius: var(--radius-md);
+}
+
+/* --- Breadcrumb --- */
+.el-breadcrumb__inner {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.el-breadcrumb__item:last-child .el-breadcrumb__inner {
+  color: var(--text-primary);
+}
+
+/* ============================================================
+   Scrollbar Styling — Apple-style thin scrollbar
+   ============================================================ */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--text-muted);
+  background: var(--text-tertiary);
   border-radius: 3px;
 }
 
@@ -225,10 +731,12 @@ small,
   background: var(--text-secondary);
 }
 
-/* Utility classes */
+/* ============================================================
+   Utility Classes
+   ============================================================ */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: opacity 0.25s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 .fade-enter-from,
 .fade-leave-to {
@@ -236,10 +744,78 @@ small,
 }
 
 .text-center { text-align: center; }
-.text-right { text-align: right; }
-.mt-8 { margin-top: 8px; }
+.text-right  { text-align: right; }
+.text-left   { text-align: left; }
+.mt-8  { margin-top: 8px; }
 .mt-16 { margin-top: 16px; }
 .mt-24 { margin-top: 24px; }
-.mb-8 { margin-bottom: 8px; }
+.mb-8  { margin-bottom: 8px; }
 .mb-16 { margin-bottom: 16px; }
 .mb-24 { margin-bottom: 24px; }
+
+/* ============================================================
+   Global Animation: Viewport Entrance
+   ============================================================ */
+.animate-enter {
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.3s cubic-bezier(0.25, 0.1, 0.25, 1),
+    transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.animate-enter.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Card hover float */
+.card-float {
+  transition:
+    transform 0.22s cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 0.22s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.card-float:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* ============================================================
+   Glass Morphism Mixin Classes
+   ============================================================ */
+.glass-surface {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-light);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.glass-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+}
+
+/* ============================================================
+   Reduced Motion (accessibility)
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

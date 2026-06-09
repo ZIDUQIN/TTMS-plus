@@ -81,8 +81,8 @@
             <div class="theme-cards">
               <div
                 class="theme-card"
-                :class="{ active: themeStore.currentTheme === 'white' }"
-                @click="themeStore.setTheme('white')"
+                :class="{ active: themeStore.currentTheme === 'light' }"
+                @click="themeStore.setTheme('light')"
               >
                 <div class="theme-preview white-preview">
                   <div class="preview-bar"></div>
@@ -92,7 +92,7 @@
                   </div>
                 </div>
                 <span>日间模式</span>
-                <el-icon v-if="themeStore.currentTheme === 'white'" class="check-icon"><CircleCheckFilled /></el-icon>
+                <el-icon v-if="themeStore.currentTheme === 'light'" class="check-icon"><CircleCheckFilled /></el-icon>
               </div>
               <div
                 class="theme-card"

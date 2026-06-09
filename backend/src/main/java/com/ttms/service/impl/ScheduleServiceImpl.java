@@ -50,6 +50,8 @@ public class ScheduleServiceImpl implements ScheduleService {
     public Page<Schedule> list(int page, int size) {
         Page<Schedule> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<Schedule> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Schedule::getDeleted, 0);
+        wrapper.gt(Schedule::getStartTime, java.time.LocalDateTime.now());
         wrapper.orderByDesc(Schedule::getStartTime);
 
         Page<Schedule> result = scheduleMapper.selectPage(pageParam, wrapper);

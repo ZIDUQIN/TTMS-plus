@@ -95,6 +95,22 @@ public class AdminOrderController {
     }
 
     /**
+     * 协助支付订单（管理端替用户支付）
+     * POST /api/admin/orders/assist-pay/{orderId}
+     *
+     * @param orderId 订单ID
+     * @return 支付后的订单
+     */
+    @PostMapping("/assist-pay/{orderId}")
+    public ApiResponse<Order> assistPay(@PathVariable Long orderId) {
+        Long operatorId = getCurrentUserId();
+        log.info("管理端协助支付: operatorId={}, orderId={}", operatorId, orderId);
+        Order order = orderService.assistPay(orderId, operatorId);
+        log.info("协助支付成功: orderNo={}", order.getOrderNo());
+        return ApiResponse.success("协助支付成功", order);
+    }
+
+    /**
      * 获取当前登录员工/管理员的ID
      *
      * @return 当前操作员ID

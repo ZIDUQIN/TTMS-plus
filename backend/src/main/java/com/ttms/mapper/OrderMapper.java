@@ -87,6 +87,22 @@ public interface OrderMapper extends BaseMapper<Order> {
     List<Order> selectByScheduleDate(@Param("date") String date);
 
     /**
+     * 按场次日期范围查询所有有效订单（含影片关联信息）
+     * 用于票房计算——支持单日和日期范围
+     *
+     * @param startDate 开始日期（含）YYYY-MM-DD
+     * @param endDate   结束日期（含）YYYY-MM-DD
+     * @return 订单列表（含movieName, genre, posterUrl, releaseDate非数据库字段）
+     */
+    @Select("SELECT o.*, m.movie_name, m.genre, m.poster_url, m.release_date " +
+            "FROM `order` o " +
+            "JOIN schedule s ON o.schedule_id = s.id " +
+            "JOIN movie m ON o.movie_id = m.id " +
+            "WHERE o.status IN (1, 2) AND DATE(s.start_time) BETWEEN #{startDate} AND #{endDate}")
+    List<Order> selectByScheduleDateRange(@Param("startDate") String startDate,
+                                           @Param("endDate") String endDate);
+
+    /**
      * 查询影片所有有效订单（用于累计票房计算）
      *
      * @param movieId 影片ID

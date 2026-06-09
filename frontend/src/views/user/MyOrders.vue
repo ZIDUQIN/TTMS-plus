@@ -61,11 +61,11 @@
           <div class="order-header">
             <span class="order-no">订单号：{{ order.orderNo || order.id }}</span>
             <el-tag
-              :type="statusType(order.status || order.orderStatus)"
+              :type="statusType(order.status ?? order.orderStatus)"
               size="small"
               effect="dark"
             >
-              {{ statusLabel(order.status || order.orderStatus) }}
+              {{ statusLabel(order.status ?? order.orderStatus) }}
             </el-tag>
           </div>
 
@@ -90,6 +90,15 @@
           </div>
 
           <div class="order-actions">
+            <el-button
+              v-if="canPay(order)"
+              size="small"
+              type="success"
+              :loading="payingOrderId === order.id"
+              @click="handlePay(order)"
+            >
+              支付
+            </el-button>
             <el-button
               v-if="canReschedule(order)"
               size="small"
@@ -118,11 +127,11 @@
           <div v-if="expandedId === order.id" class="order-detail">
             <el-descriptions :column="2" size="small" border>
               <el-descriptions-item label="订单编号">{{ order.orderNo || order.id }}</el-descriptions-item>
-              <el-descriptions-item label="状态">{{ statusLabel(order.status || order.orderStatus) }}</el-descriptions-item>
+              <el-descriptions-item label="状态">{{ statusLabel(order.status ?? order.orderStatus) }}</el-descriptions-item>
               <el-descriptions-item label="影片">{{ order.movieName }}</el-descriptions-item>
               <el-descriptions-item label="影厅">{{ order.hallName }}</el-descriptions-item>
               <el-descriptions-item label="场次时间">{{ formatDateTime(order.scheduleStartTime || order.startTime) }}</el-descriptions-item>
-              <el-descriptions-item label="座位">{{ formatSeats(order) }}</el-descriptions-item>
+              <el-descriptions-item label="座位"><span style="white-space: nowrap;">{{ formatSeats(order) }}</span></el-descriptions-item>
               <el-descriptions-item label="金额">¥{{ order.totalAmount || order.totalPrice }}</el-descriptions-item>
               <el-descriptions-item label="创建时间">{{ formatDateTime(order.createTime || order.createdAt) }}</el-descriptions-item>
             </el-descriptions>
@@ -186,7 +195,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getMyOrders, getOrderDetail, refundOrder, rescheduleOrder as rescheduleOrderApi, getScheduleSeats, getSchedulesByMovie } from '@/api/order'
+import { getMyOrders, getOrderDetail, refundOrder, payOrder, rescheduleOrder as rescheduleOrderApi, getScheduleSeats, getSchedulesByMovie } from '@/api/order'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Tickets, ArrowLeft } from '@element-plus/icons-vue'
 import NavBar from '@/components/NavBar.vue'
@@ -213,6 +222,7 @@ const rescheduleSchedules = ref([])
 const rescheduleSeats = ref([])
 const rescheduleSeatOptions = ref([])
 const rescheduling = ref(false)
+const payingOrderId = ref(null)
 
 const defaultPoster = 'data:image/svg+xml,' + encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" width="80" height="106" viewBox="0 0 80 106">
@@ -242,24 +252,31 @@ function statusLabel(status) {
     4: '已退票',
     5: '已过期'
   }
-  return map[status] !== undefined ? map[status] : (status || '--')
+  return map[status] !== undefined ? map[status] : (status ?? '--')
 }
 
 function statusType(status) {
   const map = {
     0: 'warning',
-    1: '',
+    1: 'primary',
     2: 'success',
     3: 'info',
     4: 'danger',
     5: 'info'
   }
-  return map[status] || 'info'
+  return map[status] ?? 'info'
 }
 
 function canReschedule(order) {
   const status = order.status ?? order.orderStatus
   if (status !== 1) return false
+  const startTime = new Date(order.scheduleStartTime || order.startTime)
+  return startTime > new Date()
+}
+
+function canPay(order) {
+  const status = order.status ?? order.orderStatus
+  if (status !== 0) return false
   const startTime = new Date(order.scheduleStartTime || order.startTime)
   return startTime > new Date()
 }
@@ -311,6 +328,23 @@ async function handleRefund(order) {
     ElMessage.success('退票成功')
     fetchOrders()
   } catch (err) { /* handled */ }
+}
+
+async function handlePay(order) {
+  try {
+    await ElMessageBox.confirm(
+      `确认支付 ¥${order.totalAmount || order.totalPrice || '--'}？`,
+      '确认支付',
+      { confirmButtonText: '确认支付', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch { return }
+  payingOrderId.value = order.id
+  try {
+    await payOrder(order.id)
+    ElMessage.success('支付成功')
+    fetchOrders()
+  } catch (err) { /* handled */ }
+  finally { payingOrderId.value = null }
 }
 
 async function openReschedule(order) {

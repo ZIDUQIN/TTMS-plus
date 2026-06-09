@@ -195,6 +195,9 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // 将关联的座位标记为已售出
+        if (order.getSeatNumbers() == null || order.getSeatNumbers().isEmpty()) {
+            throw new BusinessException("订单座位信息异常，无法支付");
+        }
         String[] seatNumberArr = order.getSeatNumbers().split(",");
         for (String seatNumber : seatNumberArr) {
             Seat seat = seatMapper.selectByScheduleAndNumber(order.getScheduleId(), seatNumber.trim());
@@ -584,6 +587,75 @@ public class OrderServiceImpl implements OrderService {
 
         log.info("管理员协助下单成功: orderNo={}, 用户={}, 操作员={}", order.getOrderNo(), userId, operatorId);
         return order;
+    }
+
+    /**
+     * 协助支付订单（管理端替用户支付）
+     * 与普通支付流程相同，但跳过用户所有权校验，使用操作员工ID记录日志
+     *
+     * @param orderId    订单ID
+     * @param operatorId 操作员工ID
+     * @return 支付后的订单
+     */
+    @Override
+    @Transactional
+    public Order assistPay(Long orderId, Long operatorId) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BusinessException("订单不存在");
+        }
+        // 状态校验：只有待支付状态的订单才能支付
+        if (order.getStatus() != 0) {
+            if (order.getStatus() == 1) {
+                throw new BusinessException("该订单已支付，请勿重复支付");
+            } else if (order.getStatus() == 3) {
+                throw new BusinessException("该订单已改签");
+            } else if (order.getStatus() == 4) {
+                throw new BusinessException("该订单已退票");
+            } else if (order.getStatus() == 5) {
+                throw new BusinessException("该订单已过期");
+            }
+            throw new BusinessException("订单状态异常，无法支付");
+        }
+
+        // 获取场次，检查是否已开场
+        Schedule schedule = scheduleMapper.selectById(order.getScheduleId());
+        if (schedule != null && schedule.getStartTime() != null
+            && schedule.getStartTime().isBefore(LocalDateTime.now())) {
+            throw new BusinessException("场次已开始放映，无法支付");
+        }
+
+        // 将关联的座位标记为已售出
+        if (order.getSeatNumbers() == null || order.getSeatNumbers().isEmpty()) {
+            throw new BusinessException("订单座位信息异常，无法支付");
+        }
+        String[] seatNumberArr = order.getSeatNumbers().split(",");
+        for (String seatNumber : seatNumberArr) {
+            Seat seat = seatMapper.selectByScheduleAndNumber(order.getScheduleId(), seatNumber.trim());
+            if (seat != null) {
+                seatMapper.markSold(seat.getId());
+            }
+        }
+
+        // 更新订单状态
+        order.setStatus(1);  // 待观影
+        order.setPayTime(LocalDateTime.now());
+        orderMapper.updateById(order);
+
+        // 记录操作日志
+        OrderLog logEntry = new OrderLog();
+        logEntry.setOrderId(order.getId());
+        logEntry.setOperationType("PAY");
+        logEntry.setBeforeContent("待支付");
+        logEntry.setAfterContent("管理员协助支付, 支付时间: " + order.getPayTime());
+        logEntry.setOperatorId(operatorId);
+        logEntry.setOperatorType("EMPLOYEE");
+        logEntry.setRemark("管理员(" + operatorId + ")协助支付订单");
+        orderLogMapper.insert(logEntry);
+
+        log.info("管理员协助支付成功: orderNo={}, 操作员={}", order.getOrderNo(), operatorId);
+
+        return fillOrderInfo(order);
     }
 
     /**

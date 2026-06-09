@@ -73,6 +73,14 @@ export function assistCreateOrder(data) {
   })
 }
 
+// Assist pay order (admin)
+export function assistPayOrder(orderId) {
+  return request({
+    url: `/admin/orders/assist-pay/${orderId}`,
+    method: 'post'
+  })
+}
+
 // ===== Schedule APIs =====
 
 // Get schedules by movie
