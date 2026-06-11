@@ -374,3 +374,62 @@ CREATE TABLE IF NOT EXISTS `backup_log` (
     `end_time` DATETIME,
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================================
+-- B30: 卖品管理
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `snack` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `category` VARCHAR(50) NOT NULL DEFAULT 'OTHER',
+    `price` DECIMAL(10,2) NOT NULL DEFAULT 0,
+    `image_url` VARCHAR(500),
+    `description` VARCHAR(500),
+    `stock` INT DEFAULT -1,
+    `status` TINYINT DEFAULT 1,
+    `sort_order` INT DEFAULT 0,
+    `deleted` TINYINT DEFAULT 0,
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `snack_combo` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `price` DECIMAL(10,2) NOT NULL DEFAULT 0,
+    `original_price` DECIMAL(10,2) DEFAULT 0,
+    `snack_ids` VARCHAR(500),
+    `description` VARCHAR(500),
+    `image_url` VARCHAR(500),
+    `status` TINYINT DEFAULT 1,
+    `deleted` TINYINT DEFAULT 0,
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `snack_order` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `order_no` VARCHAR(50) NOT NULL,
+    `movie_order_id` BIGINT,
+    `user_id` BIGINT,
+    `cashier_id` BIGINT,
+    `items` TEXT,
+    `total_amount` DECIMAL(10,2) NOT NULL DEFAULT 0,
+    `payment_method` VARCHAR(20) DEFAULT 'CASH',
+    `status` TINYINT DEFAULT 1,
+    `pay_time` DATETIME,
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 卖品种子数据
+INSERT IGNORE INTO `snack` (`name`, `category`, `price`, `stock`, `status`, `sort_order`) VALUES
+('大桶爆米花','POPCORN',25.00,-1,1,1),('中桶爆米花','POPCORN',18.00,-1,1,2),
+('可口可乐(大)','DRINK',12.00,-1,1,3),('可口可乐(中)','DRINK',8.00,-1,1,4),
+('矿泉水','DRINK',5.00,-1,1,5),('薯片','SNACK',10.00,-1,1,6),
+('热狗','SNACK',12.00,-1,1,7),('冰淇淋','SNACK',15.00,50,1,8);
+
+INSERT IGNORE INTO `snack_combo` (`name`, `price`, `original_price`, `snack_ids`, `description`, `status`) VALUES
+('双人观影套餐',45.00,61.00,'[1,3,3]','大桶爆米花+2杯大可乐',1),
+('单人观影套餐',32.00,43.00,'[2,4]','中桶爆米花+中可乐',1),
+('家庭欢乐观影套餐',68.00,93.00,'[1,3,3,6,7]','大爆+2可乐+薯片+热狗',1);
