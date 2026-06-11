@@ -35,6 +35,9 @@ public class ScheduleServiceImpl implements ScheduleService {
     private final MovieMapper movieMapper;
     private final SeatMapper seatMapper;
 
+    /** 场次间缓冲时间（分钟），默认20分钟用于观众离场和清洁 */
+    private static final int BUFFER_MINUTES = 20;
+
     /** 行号字母映射: 0->A, 1->B, 2->C, ..., 25->Z */
     private static final char[] ROW_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
 
@@ -48,10 +51,22 @@ public class ScheduleServiceImpl implements ScheduleService {
      */
     @Override
     public Page<Schedule> list(int page, int size) {
+        return list(page, size, false);
+    }
+
+    /**
+     * 分页查询场次列表
+     * @param page 页码
+     * @param size 每页大小
+     * @param includeHistory 是否包含历史场次（已结束的场次）
+     */
+    public Page<Schedule> list(int page, int size, boolean includeHistory) {
         Page<Schedule> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<Schedule> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Schedule::getDeleted, 0);
-        wrapper.gt(Schedule::getStartTime, java.time.LocalDateTime.now());
+        if (!includeHistory) {
+            wrapper.gt(Schedule::getStartTime, java.time.LocalDateTime.now());
+        }
         wrapper.orderByDesc(Schedule::getStartTime);
 
         Page<Schedule> result = scheduleMapper.selectPage(pageParam, wrapper);
@@ -107,11 +122,11 @@ public class ScheduleServiceImpl implements ScheduleService {
             throw new BusinessException("该影厅正在维护中，无法排片");
         }
 
-        // 计算结束时间: 开始时间 + 影片时长
+        // 计算结束时间: 开始时间 + 影片时长 + 缓冲时间（用于观众离场和清洁）
         if (schedule.getStartTime() == null) {
             throw new BusinessException("场次开始时间不能为空");
         }
-        schedule.setEndTime(schedule.getStartTime().plusMinutes(movie.getDuration()));
+        schedule.setEndTime(schedule.getStartTime().plusMinutes(movie.getDuration() + BUFFER_MINUTES));
 
         // 检查时间冲突：同一影厅内，新场次的时间不能与已有场次重叠
         checkTimeConflict(schedule.getHallId(), schedule.getStartTime(), schedule.getEndTime(), null);
@@ -161,10 +176,10 @@ public class ScheduleServiceImpl implements ScheduleService {
             movie = movieMapper.selectById(existing.getMovieId());
         }
 
-        // 重新计算结束时间
+        // 重新计算结束时间（含缓冲时间）
         LocalDateTime newStartTime = schedule.getStartTime() != null ? schedule.getStartTime() : existing.getStartTime();
         if (movie != null) {
-            schedule.setEndTime(newStartTime.plusMinutes(movie.getDuration()));
+            schedule.setEndTime(newStartTime.plusMinutes(movie.getDuration() + BUFFER_MINUTES));
         }
 
         // 检查时间冲突（排除自身）
@@ -467,6 +482,22 @@ public class ScheduleServiceImpl implements ScheduleService {
             hallMapper.selectBatchIds(hallIds)
                     .forEach(h -> hallMap.put(h.getId(), h));
         }
+
+        // 批量查询所有场次的已锁定座位数（一次GROUP BY替代N次COUNT）
+        List<Long> scheduleIds = schedules.stream()
+                .map(Schedule::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        Map<Long, Integer> lockedCountMap = new HashMap<>();
+        if (!scheduleIds.isEmpty()) {
+            List<Map<String, Object>> lockedCounts = seatMapper.countLockedByScheduleIds(scheduleIds);
+            for (Map<String, Object> row : lockedCounts) {
+                Long sId = ((Number) row.get("scheduleId")).longValue();
+                Integer cnt = ((Number) row.get("cnt")).intValue();
+                lockedCountMap.put(sId, cnt);
+            }
+        }
+
         // 补充关联信息
         for (Schedule schedule : schedules) {
             if (schedule.getMovieId() != null) {
@@ -488,12 +519,8 @@ public class ScheduleServiceImpl implements ScheduleService {
                                    * (hall.getColCount() != null ? hall.getColCount() : 0);
                     int disabledCount = countDisabledSeats(hall.getSeatLayout());
                     int soldCount = schedule.getSoldCount() != null ? schedule.getSoldCount() : 0;
-                    // 同时查询已锁定（status=1）但未支付的座位数
-                    int lockedCount = seatMapper.selectCount(
-                        new LambdaQueryWrapper<Seat>()
-                            .eq(Seat::getScheduleId, schedule.getId())
-                            .eq(Seat::getStatus, 1)
-                    ).intValue();
+                    // 使用批量查询结果替代逐条COUNT
+                    int lockedCount = lockedCountMap.getOrDefault(schedule.getId(), 0);
                     schedule.setAvailableSeats(Math.max(0, totalSeats - disabledCount - soldCount - lockedCount));
                 }
             }

@@ -13,6 +13,6 @@ import org.apache.ibatis.annotations.Select;
 @Mapper
 public interface RoleMapper extends BaseMapper<Role> {
 
-    @Select("SELECT * FROM role WHERE role_code = #{roleCode}")
+    @Select("SELECT * FROM role WHERE role_code = #{roleCode} AND deleted = 0")
     Role findByRoleCode(@Param("roleCode") String roleCode);
 }

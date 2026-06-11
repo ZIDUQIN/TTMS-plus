@@ -3,21 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TTMS - 电影院综合管理系统</title>
+  <title>TTMS - 智能影院综合管理系统</title>
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <!-- 同步应用主题，防止页面加载闪烁 -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
   <script>
     (function() {
       var theme = localStorage.getItem('ttms-theme');
       if (theme !== 'light' && theme !== 'dark') {
-        // No saved preference — follow system
-        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        theme = 'light';
       }
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
-  <script type="module" crossorigin src="/assets/index-Cs-RwkSY.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-3G7ewDpj.css">
+  <script type="module" crossorigin src="/assets/index-DET0xpm7.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BYI9CMUp.css">
 </head>
 <body>
   <div id="app"></div>

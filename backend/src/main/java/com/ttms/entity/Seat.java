@@ -25,6 +25,9 @@ public class Seat {
     /** 座位编号: 如"A-05" */
     private String seatNumber;
 
+    /** 价格调整(B9座位分区定价): 默认0，正数为加价 */
+    private java.math.BigDecimal priceAdjustment;
+
     /** 状态: 0-空闲 1-已锁定 2-已售出 3-过道/不可用 */
     private Integer status;
 

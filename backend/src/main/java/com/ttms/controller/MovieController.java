@@ -35,7 +35,7 @@ public class MovieController {
      */
     @GetMapping("/list")
     public ApiResponse<Page<Movie>> list(@RequestParam(defaultValue = "1") int page,
-                                          @RequestParam(defaultValue = "100") int size,
+                                          @RequestParam(defaultValue = "20") int size,
                                           @RequestParam(required = false) Integer status) {
         log.debug("查询影片列表: page={}, size={}, status={}", page, size, status);
         Page<Movie> result = movieService.list(page, size, status);

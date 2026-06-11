@@ -17,7 +17,8 @@ public class Order {
     /** 订单号: 日期+随机码 */
     private String orderNo;
 
-    /** 用户ID */
+    /** 用户ID（POS柜台售票时可为空） */
+    @TableField(insertStrategy = FieldStrategy.ALWAYS)
     private Long userId;
 
     /** 场次ID */
@@ -40,6 +41,15 @@ public class Order {
 
     /** 订单状态: 0-待支付 1-待观影 2-已完成 3-已改签 4-已退票 5-已过期 */
     private Integer status;
+
+    /** 支付方式: WECHAT/ALIPAY/CASH */
+    private String paymentMethod;
+
+    /** 收银员ID(柜台售出时记录) */
+    private Long cashierId;
+
+    /** 实际退款金额 */
+    private java.math.BigDecimal refundAmount;
 
     /** 支付时间 */
     private LocalDateTime payTime;

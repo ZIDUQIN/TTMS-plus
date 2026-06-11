@@ -30,6 +30,7 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final TokenBlacklist tokenBlacklist;
 
     /** Ant风格的路径匹配器，用于判断请求路径是否需要跳过JWT校验 */
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
@@ -71,6 +72,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             // 验证令牌并设置认证信息
             if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
+                // 检查Token是否在黑名单中（登出/改密后主动失效）
+                if (tokenBlacklist.isBlacklisted(token)) {
+                    log.debug("Token已被加入黑名单，拒绝认证: {}", token.substring(0, Math.min(10, token.length())));
+                    SecurityContextHolder.clearContext();
+                    filterChain.doFilter(request, response);
+                    return;
+                }
                 String userId = String.valueOf(jwtTokenProvider.getUserId(token));
                 String role = jwtTokenProvider.getRole(token);
 

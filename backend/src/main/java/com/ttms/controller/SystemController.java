@@ -87,17 +87,26 @@ public class SystemController {
     );
 
     /**
-     * 获取操作日志列表
-     * GET /api/admin/system/logs
+     * 获取操作日志列表（分页）
+     * GET /api/admin/system/logs?page=1&size=20
      * 将原始OrderLog转换为前端可读格式（解析操作人名称、操作描述等）
      *
-     * @return 操作日志列表
+     * @param page 页码
+     * @param size 每页大小
+     * @return 分页操作日志列表
      */
     @GetMapping("/api/admin/system/logs")
-    public ApiResponse<List<Map<String, Object>>> getLogs() {
-        log.debug("查询操作日志");
-        List<OrderLog> rawLogs = orderLogMapper.selectList(
-            new LambdaQueryWrapper<OrderLog>().orderByDesc(OrderLog::getCreateTime));
+    public ApiResponse<Page<Map<String, Object>>> getLogs(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.debug("查询操作日志: page={}, size={}", page, size);
+
+        // 分页查询日志
+        Page<OrderLog> pageParam = new Page<>(page, size);
+        LambdaQueryWrapper<OrderLog> wrapper = new LambdaQueryWrapper<OrderLog>()
+            .orderByDesc(OrderLog::getCreateTime);
+        Page<OrderLog> logPage = orderLogMapper.selectPage(pageParam, wrapper);
+        List<OrderLog> rawLogs = logPage.getRecords();
 
         // 收集所有操作人ID，按类型分组批量查询
         List<Long> userIds = rawLogs.stream()
@@ -118,17 +127,15 @@ public class SystemController {
                     (e1, e2) -> e1));
 
         // 转换为前端可读格式
-        List<Map<String, Object>> result = rawLogs.stream().map(l -> {
+        List<Map<String, Object>> items = rawLogs.stream().map(l -> {
             Map<String, Object> item = new java.util.LinkedHashMap<>();
             item.put("id", l.getId());
             item.put("orderId", l.getOrderId());
 
-            // 解析操作人名称
             String operatorName = resolveOperatorName(l.getOperatorType(), l.getOperatorId(),
                 userNameMap, employeeNameMap);
             item.put("operator", operatorName);
 
-            // 操作描述
             String typeLabel = OPERATION_TYPE_LABEL.getOrDefault(l.getOperationType(), l.getOperationType());
             item.put("action", typeLabel + " | " + (l.getAfterContent() != null ? l.getAfterContent() : ""));
             item.put("module", "订单管理");
@@ -139,7 +146,11 @@ public class SystemController {
             return item;
         }).collect(java.util.stream.Collectors.toList());
 
-        return ApiResponse.success(result);
+        // 构建分页返回结果
+        Page<Map<String, Object>> resultPage = new Page<>(page, size, logPage.getTotal());
+        resultPage.setRecords(items);
+
+        return ApiResponse.success(resultPage);
     }
 
     /**

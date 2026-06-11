@@ -13,13 +13,23 @@ import java.util.Map;
 public interface ScheduleService {
 
     /**
-     * 分页查询场次列表
+     * 分页查询场次列表（仅未来场次）
      *
      * @param page 页码
      * @param size 每页大小
      * @return 分页结果（含关联影片和影厅信息）
      */
     Page<Schedule> list(int page, int size);
+
+    /**
+     * 分页查询场次列表（可选包含历史场次）
+     *
+     * @param page 页码
+     * @param size 每页大小
+     * @param includeHistory 是否包含已结束的历史场次
+     * @return 分页结果
+     */
+    Page<Schedule> list(int page, int size, boolean includeHistory);
 
     /**
      * 查询场次详情

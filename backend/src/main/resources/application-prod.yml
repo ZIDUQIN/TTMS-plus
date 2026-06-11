@@ -3,6 +3,10 @@
 # 激活方式: java -jar ttms.jar --spring.profiles.active=prod
 # ============================================================
 
+# CORS跨域配置：生产环境必须指定具体域名，不允许通配符
+cors:
+  allowed-origins: ${CORS_ORIGINS:http://localhost:8080}
+
 spring:
   datasource:
     # 生产环境建议通过环境变量注入，不在此写死密码

@@ -102,4 +102,13 @@ public interface OrderService {
      * @return 支付后的订单
      */
     Order assistPay(Long orderId, Long operatorId);
+
+    /**
+     * 取消未支付订单
+     * 释放座位、将订单状态改为已取消，无需先支付再退票
+     *
+     * @param orderId 订单ID
+     * @param userId  用户ID
+     */
+    void cancelOrder(Long orderId, Long userId);
 }

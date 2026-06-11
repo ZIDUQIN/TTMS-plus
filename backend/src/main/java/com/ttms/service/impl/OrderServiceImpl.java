@@ -41,6 +41,9 @@ public class OrderServiceImpl implements OrderService {
     private final MovieMapper movieMapper;
     private final HallMapper hallMapper;
     private final UserMapper userMapper;
+    private final SystemConfigMapper systemConfigMapper;
+    private final MemberServiceImpl memberService;
+    private final PricingServiceImpl pricingService;
 
     /** 随机字符集，用于生成订单号的随机部分 */
     private static final String RANDOM_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -107,6 +110,7 @@ public class OrderServiceImpl implements OrderService {
         order.setSeatNumbers(String.join(",", seatNumbers));
         order.setSeatCount(seatNumbers.size());
         order.setStatus(0);  // 待支付状态
+        order.setPaymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod() : "WECHAT");
         orderMapper.insert(order);
 
         // 6. 锁定所有座位（需要订单ID）
@@ -119,9 +123,16 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 7. 计算总价
-        BigDecimal unitPrice = schedule.getPrice() != null ? schedule.getPrice() : BigDecimal.ZERO;
-        totalPrice = unitPrice.multiply(BigDecimal.valueOf(seatNumbers.size()));
+        // 7. 计算总价（集成定价引擎：座位分区价+时段折扣+人群折扣+会员折扣）
+        List<String> ticketTypes = request.getTicketTypes();
+        totalPrice = pricingService.calculateOrderTotal(schedule, seatNumbers, ticketTypes);
+
+        // B15: 应用会员折扣
+        BigDecimal memberDiscount = memberService.getDiscountRate(userId);
+        if (memberDiscount.compareTo(BigDecimal.ONE) < 0) {
+            totalPrice = totalPrice.multiply(memberDiscount).setScale(2, java.math.RoundingMode.HALF_UP);
+            log.info("会员折扣: userId={}, discountRate={}, finalPrice={}", userId, memberDiscount, totalPrice);
+        }
         order.setTotalPrice(totalPrice);
         orderMapper.updateById(order);
 
@@ -206,6 +217,12 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
+        // 处理余额支付
+        if ("BALANCE".equals(order.getPaymentMethod())) {
+            memberService.payWithBalance(userId, order.getTotalPrice());
+            log.info("余额支付: userId={}, amount={}", userId, order.getTotalPrice());
+        }
+
         // 更新订单状态
         order.setStatus(1);  // 待观影
         order.setPayTime(LocalDateTime.now());
@@ -216,11 +233,21 @@ public class OrderServiceImpl implements OrderService {
         logEntry.setOrderId(order.getId());
         logEntry.setOperationType("PAY");
         logEntry.setBeforeContent("待支付");
-        logEntry.setAfterContent("已支付, 支付时间: " + order.getPayTime());
+        logEntry.setAfterContent("已支付, 支付时间: " + order.getPayTime() + ", 支付方式: " + order.getPaymentMethod());
         logEntry.setOperatorId(userId);
         logEntry.setOperatorType("USER");
         logEntry.setRemark("用户完成支付");
         orderLogMapper.insert(logEntry);
+
+        // 10. 累积积分并自动升级会员等级（B15会员体系）
+        try {
+            memberService.accumulatePoints(userId, order.getTotalPrice());
+            log.info("积分累积完成: userId={}, 消费金额={}", userId, order.getTotalPrice());
+        } catch (Exception e) {
+            // 积分累积失败不影响支付成功的结果
+            log.error("积分累积失败（支付已成功）: userId={}, amount={}, error={}",
+                userId, order.getTotalPrice(), e.getMessage());
+        }
 
         log.info("订单支付成功: orderNo={}, 金额={}", order.getOrderNo(), order.getTotalPrice());
 
@@ -420,6 +447,11 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException("场次已开始放映，无法退票");
         }
 
+        // 计算退票手续费
+        BigDecimal refundFee = calculateRefundFee(schedule, order.getTotalPrice());
+        BigDecimal refundAmount = order.getTotalPrice() != null
+            ? order.getTotalPrice().subtract(refundFee) : BigDecimal.ZERO;
+
         // 2. 释放座位
         seatMapper.releaseSeatsByOrderId(order.getId());
 
@@ -429,8 +461,11 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // 3. 更新订单状态
+        String feeInfo = refundFee.compareTo(BigDecimal.ZERO) > 0
+            ? "，手续费: $" + refundFee + "，实际退款: $" + refundAmount
+            : "";
         String orderInfo = "订单号: " + order.getOrderNo() + ", 场次: " + order.getScheduleId()
-            + ", 座位: " + order.getSeatNumbers() + ", 金额: " + order.getTotalPrice();
+            + ", 座位: " + order.getSeatNumbers() + ", 金额: " + order.getTotalPrice() + feeInfo;
         order.setStatus(4);  // 已退票
         order.setRescheduleTime(LocalDateTime.now());  // 记录退票操作时间
         orderMapper.updateById(order);
@@ -447,6 +482,77 @@ public class OrderServiceImpl implements OrderService {
         orderLogMapper.insert(logEntry);
 
         log.info("退票成功: orderNo={}, 退款金额={}, 用户={}", order.getOrderNo(), order.getTotalPrice(), userId);
+    }
+
+    /**
+     * 取消未支付订单（手动取消）
+     * 核心流程：
+     * 1. 验证订单状态为待支付(0)且场次未开始
+     * 2. 使用乐观锁将订单状态改为已取消(5)
+     * 3. 释放所有座位
+     * 4. 记录操作日志
+     *
+     * 与退款不同：取消仅适用于未支付订单，无需计算手续费
+     *
+     * @param orderId 订单ID
+     * @param userId  取消用户ID
+     */
+    @Override
+    @Transactional
+    public void cancelOrder(Long orderId, Long userId) {
+        // 1. 验证订单
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BusinessException("订单不存在");
+        }
+        if (!order.getUserId().equals(userId)) {
+            throw new BusinessException("无权操作他人订单");
+        }
+        if (order.getStatus() != 0) {
+            if (order.getStatus() == 1) {
+                throw new BusinessException("该订单已支付，请操作退票");
+            } else if (order.getStatus() == 4) {
+                throw new BusinessException("该订单已退票");
+            } else if (order.getStatus() == 5) {
+                throw new BusinessException("该订单已取消");
+            }
+            throw new BusinessException("订单状态异常，无法取消");
+        }
+
+        // 验证场次是否已开始
+        Schedule schedule = scheduleMapper.selectById(order.getScheduleId());
+        if (schedule != null && schedule.getStartTime() != null
+            && schedule.getStartTime().isBefore(LocalDateTime.now())) {
+            throw new BusinessException("场次已开始放映，无法取消");
+        }
+
+        // 2. 乐观锁取消订单：仅当status=0时才更新为status=5
+        int updated = orderMapper.cancelIfUnpaid(order.getId());
+        if (updated == 0) {
+            throw new BusinessException("订单状态已变更，取消失败");
+        }
+
+        // 3. 释放座位（乐观锁：只释放status=1的已锁定座位）
+        seatMapper.releaseSeatsByOrderIdOptimistic(order.getId());
+
+        // 原子减少场次已售数量
+        if (schedule != null) {
+            scheduleMapper.decrementSoldCount(schedule.getId(), order.getSeatCount());
+        }
+
+        // 4. 记录操作日志
+        OrderLog logEntry = new OrderLog();
+        logEntry.setOrderId(order.getId());
+        logEntry.setOperationType("CANCEL");
+        logEntry.setBeforeContent("待支付, 订单号: " + order.getOrderNo()
+            + ", 座位: " + order.getSeatNumbers() + ", 金额: " + order.getTotalPrice());
+        logEntry.setAfterContent("用户主动取消订单，座位已释放");
+        logEntry.setOperatorId(userId);
+        logEntry.setOperatorType("USER");
+        logEntry.setRemark("用户手动取消未支付订单");
+        orderLogMapper.insert(logEntry);
+
+        log.info("订单取消成功: orderNo={}, 用户={}, 座位已释放", order.getOrderNo(), userId);
     }
 
     /**
@@ -512,14 +618,17 @@ public class OrderServiceImpl implements OrderService {
     /**
      * 取消过期未支付订单
      * 定时任务，每2分钟执行一次
-     * 查询创建超过15分钟且状态仍为待支付(0)的订单
-     * 释放座位、将订单状态改为已过期(5)
+     * 查询创建超过配置超时分钟且状态仍为待支付(0)的订单
+     * 使用乐观锁UPDATE防止支付竞态条件：
+     * - 先尝试原子UPDATE status=5 WHERE id=? AND status=0
+     * - 只有成功UPDATE的订单才释放座位，避免用户在临界点支付后被错误取消
      */
     @Override
     @Scheduled(fixedDelay = 120000) // 每2分钟执行一次
-    @Transactional
     public void cancelExpired() {
-        List<Order> expiredOrders = orderMapper.selectExpiredOrders(15);
+        // 从系统配置读取超时分钟数，默认15分钟
+        int timeoutMinutes = getOrderTimeoutMinutes();
+        List<Order> expiredOrders = orderMapper.selectExpiredOrders(timeoutMinutes);
         if (expiredOrders == null || expiredOrders.isEmpty()) {
             return;
         }
@@ -527,18 +636,23 @@ public class OrderServiceImpl implements OrderService {
         int count = 0;
         for (Order order : expiredOrders) {
             try {
-                // 释放座位
-                seatMapper.releaseSeatsByOrderId(order.getId());
+                // 乐观锁UPDATE：只有status仍为0的订单才能被标记为过期
+                // 如果用户在临界点刚支付完成，status已变为1，此UPDATE不会影响任何行
+                int updated = orderMapper.cancelIfUnpaid(order.getId());
+                if (updated == 0) {
+                    // 订单已被支付，跳过
+                    log.debug("订单{}状态已变更，跳过取消", order.getOrderNo());
+                    continue;
+                }
 
-                // 原子减少场次已售数量
+                // 释放座位（使用乐观锁：只释放status=1的已锁定座位）
+                seatMapper.releaseSeatsByOrderIdOptimistic(order.getId());
+
+                // 原子减少场次已售数量（仅当订单占用了sold_count时）
                 Schedule schedule = scheduleMapper.selectById(order.getScheduleId());
                 if (schedule != null) {
                     scheduleMapper.decrementSoldCount(schedule.getId(), order.getSeatCount());
                 }
-
-                // 更新订单状态为已过期
-                order.setStatus(5);
-                orderMapper.updateById(order);
 
                 // 记录日志
                 OrderLog logEntry = new OrderLog();
@@ -559,6 +673,46 @@ public class OrderServiceImpl implements OrderService {
         if (count > 0) {
             log.info("定时任务: 已自动取消 {} 个过期未支付订单", count);
         }
+    }
+
+    /**
+     * 计算退票手续费
+     * 策略：
+     * - 开场前24小时以上：免手续费
+     * - 开场前2-24小时：收取20%手续费
+     * - 开场前2小时内：收取50%手续费
+     *
+     * @param schedule   场次
+     * @param totalPrice 订单总价
+     * @return 手续费金额
+     */
+    private BigDecimal calculateRefundFee(Schedule schedule, BigDecimal totalPrice) {
+        if (schedule == null || schedule.getStartTime() == null || totalPrice == null) {
+            return BigDecimal.ZERO;
+        }
+        long hoursUntilStart = java.time.Duration.between(LocalDateTime.now(), schedule.getStartTime()).toHours();
+        if (hoursUntilStart >= 24) {
+            return BigDecimal.ZERO;
+        } else if (hoursUntilStart >= 2) {
+            return totalPrice.multiply(new BigDecimal("0.20")).setScale(2, java.math.RoundingMode.HALF_UP);
+        } else {
+            return totalPrice.multiply(new BigDecimal("0.50")).setScale(2, java.math.RoundingMode.HALF_UP);
+        }
+    }
+
+    /**
+     * 从系统配置表读取订单超时分钟数
+     */
+    private int getOrderTimeoutMinutes() {
+        try {
+            SystemConfig config = systemConfigMapper.selectByKey("order_timeout");
+            if (config != null && config.getConfigValue() != null) {
+                return Integer.parseInt(config.getConfigValue().trim());
+            }
+        } catch (Exception e) {
+            log.warn("读取order_timeout配置失败，使用默认15分钟", e);
+        }
+        return 15;
     }
 
     /**
@@ -652,6 +806,14 @@ public class OrderServiceImpl implements OrderService {
         logEntry.setOperatorType("EMPLOYEE");
         logEntry.setRemark("管理员(" + operatorId + ")协助支付订单");
         orderLogMapper.insert(logEntry);
+
+        // 累积积分并自动升级会员等级（B15会员体系）
+        try {
+            memberService.accumulatePoints(order.getUserId(), order.getTotalPrice());
+        } catch (Exception e) {
+            log.error("积分累积失败（协助支付已成功）: userId={}, amount={}, error={}",
+                order.getUserId(), order.getTotalPrice(), e.getMessage());
+        }
 
         log.info("管理员协助支付成功: orderNo={}, 操作员={}", order.getOrderNo(), operatorId);
 

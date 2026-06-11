@@ -5,6 +5,7 @@ import com.ttms.entity.User;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 /**
  * 用户数据访问层
@@ -22,4 +23,12 @@ public interface UserMapper extends BaseMapper<User> {
      */
     @Select("SELECT * FROM user WHERE username = #{username} AND deleted = 0")
     User findByUsername(@Param("username") String username);
+
+    /**
+     * 软删除用户（直接SQL，绕过MyBatis-Plus @TableLogic）
+     * @param userId 用户ID
+     * @return 影响行数
+     */
+    @Update("UPDATE user SET deleted = 1 WHERE id = #{userId} AND deleted = 0")
+    int softDeleteById(@Param("userId") Long userId);
 }

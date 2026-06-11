@@ -2,6 +2,7 @@ package com.ttms.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.ttms.entity.OrderLog;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -33,4 +34,12 @@ public interface OrderLogMapper extends BaseMapper<OrderLog> {
      */
     @Select("SELECT * FROM order_log ORDER BY create_time DESC")
     List<OrderLog> selectAllLogs();
+
+    /**
+     * 删除指定天数之前的操作日志
+     * @param days 保留天数
+     * @return 删除条数
+     */
+    @Delete("DELETE FROM order_log WHERE create_time < DATE_SUB(NOW(), INTERVAL #{days} DAY)")
+    int deleteOlderThan(@Param("days") int days);
 }

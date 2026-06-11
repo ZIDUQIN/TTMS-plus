@@ -1,6 +1,5 @@
 <template>
   <div class="admin-layout">
-    <NavBar />
     <div class="admin-content">
       <div class="page-header">
         <h2>系统设置</h2>
@@ -122,7 +121,6 @@ import { getSystemConfig, updateSystemConfig, setSystemTheme, getSystemLogs } fr
 import { useThemeStore } from '@/stores/theme'
 import { ElMessage } from 'element-plus'
 import { CircleCheckFilled, Refresh } from '@element-plus/icons-vue'
-import NavBar from '@/components/NavBar.vue'
 
 const themeStore = useThemeStore()
 

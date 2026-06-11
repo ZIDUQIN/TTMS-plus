@@ -1,6 +1,5 @@
 <template>
   <div class="admin-layout">
-    <NavBar />
     <div class="admin-content">
       <div class="page-header">
         <h2>影厅管理</h2>
@@ -116,7 +115,6 @@ import { ref, onMounted, reactive, computed } from 'vue'
 import { getHallList, addHall, updateHall, deleteHall } from '@/api/order'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import NavBar from '@/components/NavBar.vue'
 
 const halls = ref([])
 const loading = ref(false)

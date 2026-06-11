@@ -80,12 +80,16 @@ public class MovieServiceImpl implements MovieService {
         }
         if (movie.getSortOrder() == null) {
             // 新添加的影片排序权重设为当前最大权重+1，确保出现在列表最前面
-            Movie maxSort = movieMapper.selectOne(
-                new LambdaQueryWrapper<Movie>()
-                    .orderByDesc(Movie::getSortOrder)
-                    .last("LIMIT 1")
-            );
-            int maxSortOrder = (maxSort != null && maxSort.getSortOrder() != null) ? maxSort.getSortOrder() : 0;
+            // 使用分页查询获取排序最高的影片，避免使用数据库方言 LIMIT 1
+            Page<Movie> page = new Page<>(1, 1);
+            LambdaQueryWrapper<Movie> qw = new LambdaQueryWrapper<Movie>()
+                .orderByDesc(Movie::getSortOrder);
+            Page<Movie> result = movieMapper.selectPage(page, qw);
+            int maxSortOrder = 0;
+            if (result.getRecords() != null && !result.getRecords().isEmpty()) {
+                Movie maxSort = result.getRecords().get(0);
+                maxSortOrder = (maxSort.getSortOrder() != null) ? maxSort.getSortOrder() : 0;
+            }
             movie.setSortOrder(maxSortOrder + 1);
         }
 

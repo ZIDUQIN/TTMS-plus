@@ -1,6 +1,5 @@
 <template>
   <div class="movie-detail-page">
-    <NavBar />
 
     <div class="detail-container" v-loading="loading">
       <template v-if="movie">
@@ -115,7 +114,6 @@ import { getMovieDetail } from '@/api/movie'
 import { getSchedulesByMovie } from '@/api/order'
 import { ElMessage } from 'element-plus'
 import { Clock } from '@element-plus/icons-vue'
-import NavBar from '@/components/NavBar.vue'
 
 const route = useRoute()
 const router = useRouter()

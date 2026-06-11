@@ -5,6 +5,7 @@ import com.ttms.entity.Order;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -73,6 +74,16 @@ public interface OrderMapper extends BaseMapper<Order> {
     List<Order> selectExpiredOrders(@Param("timeoutMinutes") int timeoutMinutes);
 
     /**
+     * 乐观锁取消订单：仅当status=0（待支付）时才更新为status=5（已过期）
+     * 防止支付竞态条件——如果用户在临界点完成支付，此UPDATE不会影响任何行
+     *
+     * @param orderId 订单ID
+     * @return 影响行数（0=已被支付，1=取消成功）
+     */
+    @Update("UPDATE `order` SET status = 5, update_time = NOW() WHERE id = #{orderId} AND status = 0")
+    int cancelIfUnpaid(@Param("orderId") Long orderId);
+
+    /**
      * 按场次日期查询所有有效订单（含影片关联信息）
      * 用于票房计算——在Java层进行聚合
      *
@@ -114,4 +125,74 @@ public interface OrderMapper extends BaseMapper<Order> {
             "WHERE o.status IN (1, 2) AND o.movie_id = #{movieId}")
     List<Order> selectByMovieIdAllTime(@Param("movieId") Long movieId);
 
+    // ========== 统计聚合查询（避免全量加载OOM） ==========
+
+    /**
+     * 聚合营收统计：SUM/COUNT直接在数据库层完成
+     */
+    @Select("SELECT COALESCE(SUM(o.total_price), 0) as totalRevenue, " +
+            "COUNT(*) as orderCount, " +
+            "COALESCE(SUM(o.seat_count), 0) as ticketCount " +
+            "FROM `order` o " +
+            "WHERE o.status IN (1, 2) " +
+            "AND o.pay_time >= #{startTime} AND o.pay_time < #{endTime}")
+    java.util.Map<String, Object> aggregateRevenue(@Param("startTime") java.time.LocalDateTime startTime,
+                                                    @Param("endTime") java.time.LocalDateTime endTime);
+
+    /**
+     * 按影片ID聚合票房排行（数据库层聚合，避免全量加载到JVM）
+     */
+    @Select("SELECT o.movie_id as movieId, " +
+            "COALESCE(SUM(o.total_price), 0) as revenue, " +
+            "COALESCE(SUM(o.seat_count), 0) as ticketCount " +
+            "FROM `order` o " +
+            "WHERE o.status IN (1, 2) " +
+            "GROUP BY o.movie_id " +
+            "ORDER BY revenue DESC")
+    List<java.util.Map<String, Object>> aggregateByMovie();
+
+    /**
+     * 按日期聚合每日营收
+     */
+    @Select("SELECT DATE(o.pay_time) as date, " +
+            "COALESCE(SUM(o.total_price), 0) as revenue, " +
+            "COUNT(*) as orderCount " +
+            "FROM `order` o " +
+            "WHERE o.status IN (1, 2) " +
+            "AND o.pay_time >= #{startTime} AND o.pay_time < #{endTime} " +
+            "GROUP BY DATE(o.pay_time) " +
+            "ORDER BY date ASC")
+    List<java.util.Map<String, Object>> aggregateDailyRevenue(@Param("startTime") java.time.LocalDateTime startTime,
+                                                               @Param("endTime") java.time.LocalDateTime endTime);
+
+    /**
+     * 按月份聚合月度营收
+     */
+    @Select("SELECT DATE_FORMAT(o.create_time, '%Y-%m') as month, " +
+            "COALESCE(SUM(o.total_price), 0) as revenue, " +
+            "COUNT(*) as orderCount, " +
+            "COALESCE(SUM(o.seat_count), 0) as ticketCount " +
+            "FROM `order` o " +
+            "WHERE o.status IN (1, 2) " +
+            "AND o.create_time >= #{startTime} AND o.create_time < #{endTime} " +
+            "GROUP BY DATE_FORMAT(o.create_time, '%Y-%m') " +
+            "ORDER BY month ASC")
+    List<java.util.Map<String, Object>> aggregateMonthly(@Param("startTime") java.time.LocalDateTime startTime,
+                                                          @Param("endTime") java.time.LocalDateTime endTime);
+
+    /**
+     * 按影片和日期聚合票房趋势（单条SQL替代N+1查询）
+     */
+    @Select("SELECT DATE(s.start_time) as date, " +
+            "COALESCE(SUM(o.total_price), 0) as revenue, " +
+            "COALESCE(SUM(o.seat_count), 0) as ticketCount " +
+            "FROM `order` o " +
+            "JOIN schedule s ON o.schedule_id = s.id " +
+            "WHERE o.movie_id = #{movieId} AND o.status IN (1, 2) " +
+            "AND DATE(s.start_time) BETWEEN #{startDate} AND #{endDate} " +
+            "GROUP BY DATE(s.start_time) " +
+            "ORDER BY date ASC")
+    List<java.util.Map<String, Object>> aggregateMovieTrend(@Param("movieId") Long movieId,
+                                                             @Param("startDate") String startDate,
+                                                             @Param("endDate") String endDate);
 }

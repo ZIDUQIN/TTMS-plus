@@ -1,0 +1,84 @@
+# ============================================================
+# TTMS Docker Compose 部署配置
+# 本地测试: docker compose up -d
+# 华为云部署: 上传此文件 + 设置环境变量后 docker compose up -d
+# ============================================================
+
+services:
+  # ---- MySQL 数据库 ----
+  mysql:
+    image: mysql:8.0
+    container_name: ttms-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-Root@123456}
+      MYSQL_DATABASE: TTMS
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-Root@123456}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+      - --max_connections=200
+    networks:
+      - ttms-net
+
+  # ---- TTMS 应用 ----
+  app:
+    image: ttms:latest
+    container_name: ttms-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      # 数据库连接（docker-compose 内部通过服务名 mysql 访问）
+      DB_URL: jdbc:mysql://mysql:3306/TTMS?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-Root@123456}
+      # JWT 密钥（生产环境务必修改为随机长字符串）
+      JWT_SECRET: ${JWT_SECRET:-TTMS2024ProductionSecretKeyChangeMeInProduction!}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      # 管理员账号（首次启动自动创建）
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      # 文件上传路径
+      UPLOAD_PATH: /app/uploads
+      # CORS 允许的来源（逗号分隔，不含空格）
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      # Java 参数
+      JAVA_OPTS: -Xms256m -Xmx512m
+    volumes:
+      - uploads_data:/app/uploads
+      - logs_data:/data/ttms/logs
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    networks:
+      - ttms-net
+
+volumes:
+  mysql_data:
+  uploads_data:
+  logs_data:
+
+networks:
+  ttms-net:
+    driver: bridge

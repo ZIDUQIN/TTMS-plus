@@ -63,6 +63,18 @@ public interface SeatMapper extends BaseMapper<Seat> {
     int releaseSeat(@Param("seatId") Long seatId);
 
     /**
+     * 将座位标记为已售出（按场次和座位号）
+     * 支付完成后将座位状态改为2（已售出）
+     *
+     * @param scheduleId 场次ID
+     * @param seatNumber 座位编号
+     * @return 影响行数
+     */
+    @Update("UPDATE seat SET status = 2 WHERE schedule_id = #{scheduleId} AND seat_number = #{seatNumber} AND status = 0")
+    int markSoldByScheduleAndNumber(@Param("scheduleId") Long scheduleId,
+                                    @Param("seatNumber") String seatNumber);
+
+    /**
      * 将座位标记为已售出
      * 支付完成后将座位状态改为2（已售出）
      *
@@ -81,6 +93,44 @@ public interface SeatMapper extends BaseMapper<Seat> {
      */
     @Update("UPDATE seat SET status = 0, lock_time = NULL, order_id = NULL WHERE order_id = #{orderId}")
     int releaseSeatsByOrderId(@Param("orderId") Long orderId);
+
+    /**
+     * 乐观锁释放座位：只释放status=1（已锁定）的座位
+     * 防止支付竞态条件——如果用户刚支付完成（座位status已变为2），此UPDATE不会影响任何行
+     *
+     * @param orderId 订单ID
+     * @return 影响行数
+     */
+    @Update("UPDATE seat SET status = 0, lock_time = NULL, order_id = NULL " +
+            "WHERE order_id = #{orderId} AND status = 1")
+    int releaseSeatsByOrderIdOptimistic(@Param("orderId") Long orderId);
+
+    /**
+     * 批量查询各场次的已锁定座位数（一次GROUP BY替代N次COUNT）
+     *
+     * @param scheduleIds 场次ID列表
+     * @return [{scheduleId, cnt}, ...]
+     */
+    @Select("<script>" +
+            "SELECT schedule_id as scheduleId, COUNT(*) as cnt " +
+            "FROM seat WHERE status = 1 AND schedule_id IN " +
+            "<foreach collection='scheduleIds' item='id' open='(' separator=',' close=')'>" +
+            "#{id}" +
+            "</foreach>" +
+            " GROUP BY schedule_id" +
+            "</script>")
+    List<java.util.Map<String, Object>> countLockedByScheduleIds(@Param("scheduleIds") List<Long> scheduleIds);
+
+    /**
+     * 释放超时锁定的座位（兜底机制）
+     * 释放 lock_time 超过指定分钟数且 status=1 的座位
+     *
+     * @param timeoutMinutes 超时分钟数
+     * @return 影响行数
+     */
+    @Update("UPDATE seat SET status = 0, lock_time = NULL, order_id = NULL " +
+            "WHERE status = 1 AND lock_time < DATE_SUB(NOW(), INTERVAL #{timeoutMinutes} MINUTE)")
+    int releaseStaleLockedSeats(@Param("timeoutMinutes") int timeoutMinutes);
 
     /**
      * 批量插入座位（用于自动生成场次座位）

@@ -123,14 +123,21 @@ public class HallServiceImpl implements HallService {
             throw new BusinessException("影厅不存在");
         }
 
-        // 检查该影厅是否有未结束的场次（结束时间在当前时间之后的场次）
-        List<Schedule> activeSchedules = scheduleMapper.selectByHallId(id);
-        if (activeSchedules != null && !activeSchedules.isEmpty()) {
-            boolean hasActive = activeSchedules.stream()
+        // 检查该影厅是否有未结束的场次（结束时间在当前时间之后的正常场次）
+        List<Schedule> allSchedules = scheduleMapper.selectByHallIdForDelete(id);
+        if (allSchedules != null && !allSchedules.isEmpty()) {
+            // 检查是否有进行中的正常场次
+            boolean hasActive = allSchedules.stream()
                 .anyMatch(s -> s.getEndTime() != null && s.getEndTime().isAfter(LocalDateTime.now())
                        && s.getStatus() == 1);
             if (hasActive) {
                 throw new BusinessException("该影厅存在进行中的场次，无法删除");
+            }
+            // 检查已取消的场次是否还关联已售座位（清理不干净的情况）
+            boolean hasOrphanTickets = allSchedules.stream()
+                .anyMatch(s -> s.getStatus() == 0 && s.getSoldCount() != null && s.getSoldCount() > 0);
+            if (hasOrphanTickets) {
+                throw new BusinessException("该影厅存在已取消但有关联售票的场次，请先处理后再删除");
             }
         }
 

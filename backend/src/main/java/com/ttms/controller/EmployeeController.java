@@ -156,7 +156,11 @@ public class EmployeeController {
             }
         }
 
-        // 不更新密码（密码通过专门的接口重置）
+        // 禁止通过update接口修改密码（密码通过专门的reset-password接口重置）
+        // 无论前端传null还是空字符串，都强制置null让MyBatis-Plus跳过此字段
+        if (employee.getPassword() != null && !employee.getPassword().isBlank()) {
+            log.warn("检测到通过update接口尝试修改密码: id={}, 已拦截", employee.getId());
+        }
         employee.setPassword(null);
 
         employeeMapper.updateById(employee);
@@ -227,22 +231,29 @@ public class EmployeeController {
     }
 
     /**
-     * 自动生成员工工号
+     * 自动生成员工工号（线程安全）
      * 格式: EMP + 3位递增数字
+     * 使用synchronized防止并发生成重复工号
+     * employee_no列有UNIQUE约束作为数据库层兜底（schema.sql）
      *
      * @return 员工工号
      */
-    private String generateEmployeeNo() {
+    private synchronized String generateEmployeeNo() {
+        // 使用分页查询获取最新员工，避免使用数据库方言 LIMIT 1
+        Page<Employee> page = new Page<>(1, 1);
         LambdaQueryWrapper<Employee> wrapper = new LambdaQueryWrapper<>();
-        wrapper.orderByDesc(Employee::getId).last("LIMIT 1");
-        Employee lastEmployee = employeeMapper.selectOne(wrapper);
+        wrapper.orderByDesc(Employee::getId);
+        Page<Employee> result = employeeMapper.selectPage(page, wrapper);
         int nextNo = 1;
-        if (lastEmployee != null && lastEmployee.getEmployeeNo() != null) {
-            String lastNo = lastEmployee.getEmployeeNo().replaceAll("[^0-9]", "");
-            try {
-                nextNo = Integer.parseInt(lastNo) + 1;
-            } catch (NumberFormatException e) {
-                nextNo = 1;
+        if (result.getRecords() != null && !result.getRecords().isEmpty()) {
+            Employee lastEmployee = result.getRecords().get(0);
+            if (lastEmployee.getEmployeeNo() != null) {
+                String lastNo = lastEmployee.getEmployeeNo().replaceAll("[^0-9]", "");
+                try {
+                    nextNo = Integer.parseInt(lastNo) + 1;
+                } catch (NumberFormatException e) {
+                    nextNo = 1;
+                }
             }
         }
         return "EMP" + String.format("%03d", nextNo);

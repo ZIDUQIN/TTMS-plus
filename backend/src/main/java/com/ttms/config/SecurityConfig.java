@@ -56,6 +56,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/movies/**").hasAnyRole("SUPER_ADMIN", "STAFF")
                 .requestMatchers(HttpMethod.DELETE, "/api/movies/**").hasAnyRole("SUPER_ADMIN", "STAFF")
 
+                // ========== 卖品套餐：所有人可查看 ==========
+                .requestMatchers("/api/snacks/**").permitAll()
+
                 // ========== 场次查询：所有人可查，管理需管理员 ==========
                 .requestMatchers("/api/schedules/query/**").permitAll()
                 .requestMatchers("/api/schedules/**").hasAnyRole("SUPER_ADMIN", "STAFF")
@@ -84,10 +87,14 @@ public class SecurityConfig {
 
     /**
      * 密码编码器 Bean
-     * 使用BCrypt加密算法，自动加盐，安全性高
+     * 使用BCrypt加密算法，自动加盐
+     * strength=10: 安全性高，但登录验证耗时约100ms
+     * 高并发场景可降至8（约25ms），通过配置调整
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        // strength: 4-31, 默认10, 每增加1约翻倍计算时间
+        // 生产环境建议10, 测试环境可降低
+        return new BCryptPasswordEncoder(BCryptPasswordEncoder.BCryptVersion.$2A, 10);
     }
 }

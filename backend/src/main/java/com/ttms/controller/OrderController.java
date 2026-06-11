@@ -111,6 +111,22 @@ public class OrderController {
     }
 
     /**
+     * 取消未支付订单
+     * POST /api/user/orders/cancel/{orderId}
+     *
+     * @param orderId 订单ID
+     * @return 操作结果
+     */
+    @PostMapping("/cancel/{orderId}")
+    public ApiResponse<Void> cancelOrder(@PathVariable Long orderId) {
+        Long userId = getCurrentUserId();
+        log.info("取消订单请求: userId={}, orderId={}", userId, orderId);
+        orderService.cancelOrder(orderId, userId);
+        log.info("取消订单成功: orderId={}", orderId);
+        return ApiResponse.success("订单已取消，座位已释放");
+    }
+
+    /**
      * 退票
      * POST /api/user/orders/refund/{orderId}
      *

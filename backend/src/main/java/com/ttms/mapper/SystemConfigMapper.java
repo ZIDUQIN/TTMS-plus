@@ -21,7 +21,7 @@ public interface SystemConfigMapper extends BaseMapper<SystemConfig> {
      * @param configKey 配置键
      * @return 系统配置实体，不存在则返回null
      */
-    @Select("SELECT * FROM system_config WHERE config_key = #{configKey}")
+    @Select("SELECT * FROM system_config WHERE config_key = #{configKey} AND deleted = 0")
     SystemConfig selectByKey(@Param("configKey") String configKey);
 
     /**

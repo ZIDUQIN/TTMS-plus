@@ -60,12 +60,10 @@ public class FileController {
         }
 
         try {
-            // Generate unique filename
+            // 根据文件魔数推断安全扩展名，不信任用户输入的扩展名
+            // 防止用户上传 evil.jsp（内容是合法PNG）导致安全风险
+            String extension = inferExtensionFromMagicBytes(file);
             String originalFilename = file.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
             String dateDir = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
             String filename = UUID.randomUUID().toString().replace("-", "") + extension;
 
@@ -142,6 +140,51 @@ public class FileController {
         } catch (IOException e) {
             log.warn("文件魔数读取失败: {}", e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * 根据文件魔数推断安全扩展名
+     * 不信任用户上传的文件名中的扩展名，防止 .jsp/.html 等攻击
+     *
+     * @param file 上传的文件
+     * @return 安全扩展名（如 .jpg .png .gif .bmp .webp）
+     */
+    private String inferExtensionFromMagicBytes(MultipartFile file) {
+        try {
+            byte[] header = file.getBytes();
+
+            // JPEG: FF D8 FF
+            if ((header[0] & 0xFF) == 0xFF && (header[1] & 0xFF) == 0xD8 && (header[2] & 0xFF) == 0xFF) {
+                return ".jpg";
+            }
+            // PNG: 89 50 4E 47
+            if (header[0] == (byte) 0x89 && header[1] == (byte) 0x50
+                && header[2] == (byte) 0x4E && header[3] == (byte) 0x47) {
+                return ".png";
+            }
+            // GIF: 47 49 46 38
+            if (header[0] == (byte) 0x47 && header[1] == (byte) 0x49
+                && header[2] == (byte) 0x46 && header[3] == (byte) 0x38) {
+                return ".gif";
+            }
+            // BMP: 42 4D
+            if (header[0] == (byte) 0x42 && header[1] == (byte) 0x4D) {
+                return ".bmp";
+            }
+            // WebP: RIFF + WEBP
+            if (header.length >= 12
+                && header[0] == (byte) 0x52 && header[1] == (byte) 0x49
+                && header[2] == (byte) 0x46 && header[3] == (byte) 0x46
+                && header[8] == (byte) 0x57 && header[9] == (byte) 0x45
+                && header[10] == (byte) 0x42 && header[11] == (byte) 0x50) {
+                return ".webp";
+            }
+
+            return ".bin"; // 未知类型（正常情况下不会到这里，因为已通过魔数验证）
+        } catch (IOException e) {
+            log.warn("推断文件扩展名失败: {}", e.getMessage());
+            return ".bin";
         }
     }
 }

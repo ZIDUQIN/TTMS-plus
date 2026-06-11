@@ -42,6 +42,9 @@ public class Hall {
     /** 座位布局JSON: 记录不可用座位位置,如["1-5","2-10"] */
     private String seatLayout;
 
+    /** 增强布局配置JSON(B18): 完整座位布局含过道/情侣座/无障碍座 */
+    private String layoutCfg;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

@@ -217,34 +217,76 @@ public class BoxOfficeServiceImpl implements BoxOfficeService {
 
     @Override
     public Map<String, Object> getMovieDetail(Long movieId, LocalDate startDate, LocalDate endDate, String type) {
-        // 复用排行榜数据找到目标影片
-        List<Map<String, Object>> ranking = getRanking(startDate, endDate, type);
-        Map<String, Object> movieData = ranking.stream()
-                .filter(m -> movieId.equals(m.get("movieId")))
-                .findFirst()
-                .orElse(null);
+        // 直接查询指定日期范围内该影片的订单聚合数据（避免计算全量排行榜）
+        String startStr = startDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
+        String endStr = endDate.format(DateTimeFormatter.ISO_LOCAL_DATE);
 
-        if (movieData != null) {
-            return movieData;
-        }
+        List<Order> movieOrders = orderMapper.selectByScheduleDateRange(startStr, endStr).stream()
+                .filter(o -> movieId.equals(o.getMovieId()))
+                .collect(Collectors.toList());
 
-        // 该日期范围无票房数据，返回影片基本信息
         Movie movie = movieMapper.selectById(movieId);
         if (movie == null) {
             return null;
         }
 
+        // 计算该影片的统计
+        BigDecimal rawBoxOffice = movieOrders.stream()
+                .map(o -> o.getTotalPrice() != null ? o.getTotalPrice() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        int ticketCount = movieOrders.stream()
+                .mapToInt(o -> o.getSeatCount() != null ? o.getSeatCount() : 0).sum();
+
+        // 场次数
+        List<Schedule> schedules = scheduleMapper.selectByDateRangeWithHall(startStr, endStr);
+        List<Schedule> movieSchedules = schedules.stream()
+                .filter(s -> movieId.equals(s.getMovieId())).collect(Collectors.toList());
+        int scheduleCount = movieSchedules.size();
+        int totalSchedules = schedules.size();
+
+        long capacitySum = movieSchedules.stream()
+                .mapToLong(s -> {
+                    Integer rows = s.getHallRowCount();
+                    Integer cols = s.getHallColCount();
+                    return (rows != null && cols != null) ? (long) rows * cols : 0;
+                }).sum();
+
+        // 计算大盘数据
+        BigDecimal totalRawBoxOffice = rawBoxOffice; // 仅用于ratio
+        // 实际需要全量：如果订单为0，ratio直接为0
+        if (movieOrders.isEmpty()) {
+            totalRawBoxOffice = BigDecimal.ZERO;
+        } else {
+            // 计算真正的总票房
+            totalRawBoxOffice = schedules.isEmpty() ? BigDecimal.ZERO : BigDecimal.valueOf(
+                ticketCount > 0 ? rawBoxOffice.doubleValue() : 0);
+        }
+
+        double avgAttendance = scheduleCount > 0 ? divide(ticketCount, scheduleCount, 1) : 0;
+        double occupancyRate = capacitySum > 0 ? divide(ticketCount * 100.0, capacitySum, 1) : 0;
+        double scheduleRatio = totalSchedules > 0 ? divide(scheduleCount * 100.0, totalSchedules, 1) : 0;
+
+        // 计算全量票房的正确比率
+        List<Order> allRangeOrders = orderMapper.selectByScheduleDateRange(startStr, endStr);
+        BigDecimal allRangeRevenue = allRangeOrders.stream()
+                .map(o -> o.getTotalPrice() != null ? o.getTotalPrice() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        double boxOfficeRatio = allRangeRevenue.compareTo(BigDecimal.ZERO) > 0
+                ? rawBoxOffice.multiply(HUNDRED).divide(allRangeRevenue, 1, RoundingMode.HALF_UP).doubleValue()
+                : 0;
+
+        BigDecimal displayBoxOffice = applyShareRatio(rawBoxOffice, type);
+
         long daysSinceRelease = movie.getReleaseDate() != null
                 ? ChronoUnit.DAYS.between(movie.getReleaseDate(), endDate) + 1 : 0;
         if (daysSinceRelease < 0) daysSinceRelease = 0;
 
-        List<Order> allOrders = orderMapper.selectByMovieIdAllTime(movieId);
-        BigDecimal cumulative = allOrders.stream()
+        List<Order> allTimeOrders = orderMapper.selectByMovieIdAllTime(movieId);
+        BigDecimal cumulative = allTimeOrders.stream()
                 .map(o -> o.getTotalPrice() != null ? o.getTotalPrice() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         Map<String, Object> detail = new LinkedHashMap<>();
-        detail.put("rank", 0);
         detail.put("movieId", movieId);
         detail.put("movieName", movie.getMovieName());
         detail.put("genre", movie.getGenre());
@@ -252,39 +294,45 @@ public class BoxOfficeServiceImpl implements BoxOfficeService {
         detail.put("releaseDate", movie.getReleaseDate() != null ? movie.getReleaseDate().format(DateTimeFormatter.ISO_LOCAL_DATE) : null);
         detail.put("daysSinceRelease", daysSinceRelease);
         detail.put("cumulativeBoxOffice", cumulative.setScale(2, RoundingMode.HALF_UP).doubleValue());
-        detail.put("boxOffice", 0.0);
-        detail.put("boxOfficeRatio", 0.0);
-        detail.put("ticketCount", 0);
-        detail.put("scheduleCount", 0);
-        detail.put("scheduleRatio", 0.0);
-        detail.put("avgAttendance", 0.0);
-        detail.put("occupancyRate", 0.0);
+        detail.put("boxOffice", displayBoxOffice.setScale(2, RoundingMode.HALF_UP).doubleValue());
+        detail.put("boxOfficeRatio", boxOfficeRatio);
+        detail.put("ticketCount", ticketCount);
+        detail.put("scheduleCount", scheduleCount);
+        detail.put("scheduleRatio", scheduleRatio);
+        detail.put("avgAttendance", avgAttendance);
+        detail.put("occupancyRate", occupancyRate);
+
         return detail;
     }
 
     @Override
     public List<Map<String, Object>> getMovieTrend(Long movieId, LocalDate endDate, String type, int days) {
-        // 往前推 days-1 天，共 days 天
-        LocalDate startDate = endDate.minusDays(days - 1);
+        // 限制最大查询天数，防止恶意请求
+        int maxDays = Math.min(days, 365);
+        LocalDate startDate = endDate.minusDays(maxDays - 1);
 
+        // 单条SQL聚合查询，替代逐日N+1查询
+        List<Map<String, Object>> rows = orderMapper.aggregateMovieTrend(
+            movieId,
+            startDate.format(DateTimeFormatter.ISO_LOCAL_DATE),
+            endDate.format(DateTimeFormatter.ISO_LOCAL_DATE));
+
+        // 构建日期索引
+        Map<String, Map<String, Object>> dataMap = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            String dateKey = row.get("date").toString();
+            dataMap.put(dateKey, row);
+        }
+
+        // 填充完整日期范围（包括无数据的日期）
         List<Map<String, Object>> trend = new ArrayList<>();
-        for (int i = 0; i < days; i++) {
+        for (int i = 0; i < maxDays; i++) {
             LocalDate d = startDate.plusDays(i);
             String dateKey = d.format(DateTimeFormatter.ISO_LOCAL_DATE);
+            Map<String, Object> row = dataMap.get(dateKey);
 
-            // 查询该日期的所有订单，然后过滤目标影片
-            List<Order> dayOrders = orderMapper.selectByScheduleDate(dateKey);
-            List<Order> movieDayOrders = dayOrders.stream()
-                    .filter(o -> movieId.equals(o.getMovieId()))
-                    .collect(Collectors.toList());
-
-            BigDecimal rawRevenue = movieDayOrders.stream()
-                    .map(o -> o.getTotalPrice() != null ? o.getTotalPrice() : BigDecimal.ZERO)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            int tickets = movieDayOrders.stream()
-                    .mapToInt(o -> o.getSeatCount() != null ? o.getSeatCount() : 0)
-                    .sum();
-
+            BigDecimal rawRevenue = row != null ? toBigDecimal(row.get("revenue")) : BigDecimal.ZERO;
+            int tickets = row != null ? ((Number) row.get("ticketCount")).intValue() : 0;
             BigDecimal revenue = applyShareRatio(rawRevenue, type);
 
             Map<String, Object> item = new LinkedHashMap<>();
@@ -294,8 +342,8 @@ public class BoxOfficeServiceImpl implements BoxOfficeService {
             trend.add(item);
         }
 
-        log.info("趋势查询: movieId={}, endDate={}, type={}, {}天", movieId,
-                endDate.format(DateTimeFormatter.ISO_LOCAL_DATE), type, trend.size());
+        log.info("趋势查询: movieId={}, endDate={}, type={}, {}天",
+                movieId, endDate.format(DateTimeFormatter.ISO_LOCAL_DATE), type, trend.size());
         return trend;
     }
 
@@ -325,6 +373,12 @@ public class BoxOfficeServiceImpl implements BoxOfficeService {
     private double divide(double numerator, double denominator, int scale) {
         if (denominator == 0) return 0;
         return new BigDecimal(numerator).divide(new BigDecimal(denominator), scale, RoundingMode.HALF_UP).doubleValue();
+    }
+
+    private BigDecimal toBigDecimal(Object val) {
+        if (val == null) return BigDecimal.ZERO;
+        if (val instanceof BigDecimal) return (BigDecimal) val;
+        return new BigDecimal(val.toString());
     }
 
     /**

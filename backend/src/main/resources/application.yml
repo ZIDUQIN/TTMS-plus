@@ -27,6 +27,14 @@ spring:
       test-on-borrow: false
       test-on-return: false
       connection-init-sqls: SET NAMES utf8mb4
+      filters: stat,wall
+      filter:
+        wall:
+          enabled: true
+        stat:
+          enabled: true
+          slow-sql-millis: 2000
+          log-slow-sql: true
 
   sql:
     init:
@@ -64,6 +72,16 @@ jwt:
 file:
   upload:
     path: ${UPLOAD_PATH:./uploads/}
+
+# Actuator健康检查配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
 
 # 系统默认管理员
 system:

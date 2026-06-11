@@ -37,12 +37,8 @@ public class StatisticsController {
             @RequestParam(required = false) String endDate) {
         log.info("营收统计查询: startDate={}, endDate={}", startDate, endDate);
 
-        LocalDate start = (startDate != null && !startDate.isEmpty())
-            ? LocalDate.parse(startDate)
-            : LocalDate.now().minusDays(30);
-        LocalDate end = (endDate != null && !endDate.isEmpty())
-            ? LocalDate.parse(endDate)
-            : LocalDate.now();
+        LocalDate start = parseDate(startDate, LocalDate.now().minusDays(30));
+        LocalDate end = parseDate(endDate, LocalDate.now());
 
         Map<String, Object> data = statisticsService.getRevenue(start, end);
         return ApiResponse.success(data);
@@ -76,10 +72,8 @@ public class StatisticsController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         log.info("每日营收统计查询: startDate={}, endDate={}", startDate, endDate);
-        LocalDate start = (startDate != null && !startDate.isEmpty())
-            ? LocalDate.parse(startDate) : LocalDate.now().minusDays(30);
-        LocalDate end = (endDate != null && !endDate.isEmpty())
-            ? LocalDate.parse(endDate) : LocalDate.now();
+        LocalDate start = parseDate(startDate, LocalDate.now().minusDays(30));
+        LocalDate end = parseDate(endDate, LocalDate.now());
         List<Map<String, Object>> data = statisticsService.getDailyRevenue(start, end);
         return ApiResponse.success(data);
     }
@@ -112,14 +106,24 @@ public class StatisticsController {
             @RequestParam(required = false) String endDate) {
         log.info("统计报表导出: startDate={}, endDate={}", startDate, endDate);
 
-        LocalDate start = (startDate != null && !startDate.isEmpty())
-            ? LocalDate.parse(startDate)
-            : LocalDate.now().minusDays(30);
-        LocalDate end = (endDate != null && !endDate.isEmpty())
-            ? LocalDate.parse(endDate)
-            : LocalDate.now();
+        LocalDate start = parseDate(startDate, LocalDate.now().minusDays(30));
+        LocalDate end = parseDate(endDate, LocalDate.now());
 
         String filePath = statisticsService.exportToExcel(start, end);
         return ApiResponse.success("报表导出成功", filePath);
+    }
+
+    /**
+     * 安全解析日期字符串，避免DateTimeParseException抛500
+     */
+    private LocalDate parseDate(String dateStr, LocalDate defaultDate) {
+        if (dateStr != null && !dateStr.isEmpty()) {
+            try {
+                return LocalDate.parse(dateStr);
+            } catch (Exception e) {
+                log.warn("日期解析失败: {}, 使用默认值: {}", dateStr, defaultDate);
+            }
+        }
+        return defaultDate;
     }
 }

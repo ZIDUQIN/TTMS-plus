@@ -79,9 +79,10 @@ public class ScheduleController {
      */
     @GetMapping("/list")
     public ApiResponse<Page<Schedule>> list(@RequestParam(defaultValue = "1") int page,
-                                             @RequestParam(defaultValue = "10") int size) {
-        log.debug("查询场次列表: page={}, size={}", page, size);
-        Page<Schedule> result = scheduleService.list(page, size);
+                                             @RequestParam(defaultValue = "10") int size,
+                                             @RequestParam(defaultValue = "false") boolean includeHistory) {
+        log.debug("查询场次列表: page={}, size={}, includeHistory={}", page, size, includeHistory);
+        Page<Schedule> result = scheduleService.list(page, size, includeHistory);
         return ApiResponse.success(result);
     }
 
@@ -140,5 +141,71 @@ public class ScheduleController {
         log.info("删除场次: id={}", id);
         scheduleService.delete(id);
         return ApiResponse.success("场次删除成功");
+    }
+
+    /**
+     * 批量删除场次（管理端）
+     * DELETE /api/schedules/batch-delete
+     */
+    @DeleteMapping("/batch-delete")
+    public ApiResponse<Map<String, Object>> batchDelete(@RequestBody Map<String, Object> params) {
+        @SuppressWarnings("unchecked")
+        List<Integer> ids = (List<Integer>) params.get("ids");
+        int success = 0;
+        int skipped = 0;
+        for (Integer id : ids) {
+            try {
+                scheduleService.delete(Long.valueOf(id));
+                success++;
+            } catch (Exception e) {
+                log.warn("批量删除跳过: id={}, reason={}", id, e.getMessage());
+                skipped++;
+            }
+        }
+        log.info("批量删除完成: 成功{}场, 跳过{}场", success, skipped);
+        return ApiResponse.success("批量删除完成，成功" + success + "场"
+            + (skipped > 0 ? "，跳过" + skipped + "场（已售票）" : ""),
+            Map.of("success", success, "skipped", skipped));
+    }
+
+    /**
+     * B7: 批量排片
+     * 每个影厅独立选影片 + 日期范围 + 时段 → 自动生成每日场次
+     */
+    @PostMapping("/batch")
+    public ApiResponse<List<Schedule>> batchCreate(@RequestBody Map<String, Object> params) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> hallMovies = (List<Map<String, Object>>) params.get("hallMovies");
+        String startDate = params.get("startDate").toString();
+        String endDate = params.get("endDate").toString();
+        @SuppressWarnings("unchecked")
+        List<String> timeSlots = (List<String>) params.get("timeSlots");
+
+        java.time.LocalDate start = java.time.LocalDate.parse(startDate);
+        java.time.LocalDate end = java.time.LocalDate.parse(endDate);
+        List<Schedule> created = new java.util.ArrayList<>();
+
+        for (java.time.LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
+            for (Map<String, Object> hm : hallMovies) {
+                Long movieId = Long.valueOf(hm.get("movieId").toString());
+                Long hallId = Long.valueOf(hm.get("hallId").toString());
+                for (String timeStr : timeSlots) {
+                    java.time.LocalDateTime startTime = java.time.LocalDateTime.of(date,
+                        java.time.LocalTime.parse(timeStr));
+                    Schedule s = new Schedule();
+                    s.setMovieId(movieId);
+                    s.setHallId(hallId);
+                    s.setStartTime(startTime);
+                    try {
+                        created.add(scheduleService.add(s));
+                    } catch (Exception e) {
+                        log.warn("批量排片跳过: hallId={}, time={}, reason={}", hallId, timeStr, e.getMessage());
+                    }
+                }
+            }
+        }
+        log.info("批量排片完成: {}影厅×{}天×{}时段, 共{}场", hallMovies.size(),
+            (int) (java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1), timeSlots.size(), created.size());
+        return ApiResponse.success("批量排片完成，成功" + created.size() + "场", created);
     }
 }

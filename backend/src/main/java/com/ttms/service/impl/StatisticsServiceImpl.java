@@ -1,8 +1,6 @@
 package com.ttms.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.ttms.entity.Movie;
-import com.ttms.entity.Order;
 import com.ttms.mapper.MovieMapper;
 import com.ttms.mapper.OrderMapper;
 import com.ttms.service.StatisticsService;
@@ -23,11 +21,11 @@ import java.time.format.DateTimeFormatter;
 import java.math.RoundingMode;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 统计服务实现类
  * 负责营收统计、影片排行、月度数据汇总、Excel导出等
+ * 所有聚合计算在数据库层完成，避免全量加载订单到JVM导致OOM
  */
 @Slf4j
 @Service
@@ -39,44 +37,21 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     /**
      * 获取指定日期范围内的营收数据
-     * 统计已支付（状态1）和已完成（状态2）的订单
-     *
-     * @param startDate 开始日期
-     * @param endDate   结束日期
-     * @return 营收统计数据（总营收、订单数、售票数、平均票价）
+     * 使用数据库SUM/COUNT聚合，单次SQL返回结果
      */
     @Override
     public Map<String, Object> getRevenue(LocalDate startDate, LocalDate endDate) {
-        // 查询指定日期范围内的所有订单
-        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(Order::getStatus, 1, 2); // 已支付和已完成的订单
+        LocalDateTime startTime = startDate != null ? startDate.atStartOfDay()
+            : LocalDate.now().minusDays(30).atStartOfDay();
+        LocalDateTime endTime = endDate != null ? endDate.plusDays(1).atStartOfDay()
+            : LocalDate.now().plusDays(1).atStartOfDay();
 
-        // 如果有时间范围限制，添加支付时间条件（营收应按支付时间统计）
-        if (startDate != null) {
-            wrapper.ge(Order::getPayTime, startDate.atStartOfDay());
-        }
-        if (endDate != null) {
-            wrapper.le(Order::getPayTime, endDate.plusDays(1).atStartOfDay());
-        }
-        wrapper.orderByDesc(Order::getPayTime);
+        Map<String, Object> agg = orderMapper.aggregateRevenue(startTime, endTime);
 
-        List<Order> orders = orderMapper.selectList(wrapper);
+        BigDecimal totalRevenue = toBigDecimal(agg.get("totalRevenue"));
+        long orderCount = toLong(agg.get("orderCount"));
+        long ticketCount = toLong(agg.get("ticketCount"));
 
-        // 统计数据
-        BigDecimal totalRevenue = BigDecimal.ZERO;
-        int orderCount = orders.size();
-        int ticketCount = 0;
-
-        for (Order order : orders) {
-            if (order.getTotalPrice() != null) {
-                totalRevenue = totalRevenue.add(order.getTotalPrice());
-            }
-            if (order.getSeatCount() != null) {
-                ticketCount += order.getSeatCount();
-            }
-        }
-
-        // 计算平均票价
         BigDecimal avgPrice = ticketCount > 0
             ? totalRevenue.divide(BigDecimal.valueOf(ticketCount), 2, RoundingMode.HALF_UP)
             : BigDecimal.ZERO;
@@ -89,67 +64,32 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         log.info("营收统计: {} ~ {} -> 总营收={}, 订单数={}, 售票数={}",
             startDate, endDate, totalRevenue, orderCount, ticketCount);
-
         return result;
     }
 
     /**
      * 获取影片票房排行榜
-     * 按售票数量和票房收入综合排序
-     *
-     * @param limit 返回前N名
-     * @return 排行榜列表
+     * 使用数据库GROUP BY聚合，单次SQL返回所有影片排行
      */
     @Override
     public List<Map<String, Object>> getMovieRanking(int limit) {
-        // 查询所有已支付/已完成的订单
-        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(Order::getStatus, 1, 2);
-        List<Order> orders = orderMapper.selectList(wrapper);
+        List<Map<String, Object>> rows = orderMapper.aggregateByMovie();
 
-        // 按影片ID分组统计
-        Map<Long, BigDecimal> revenueByMovie = new LinkedHashMap<>();
-        Map<Long, Integer> countByMovie = new LinkedHashMap<>();
-
-        for (Order order : orders) {
-            Long movieId = order.getMovieId();
-            if (movieId != null) {
-                // 累计营收
-                revenueByMovie.merge(movieId,
-                    order.getTotalPrice() != null ? order.getTotalPrice() : BigDecimal.ZERO,
-                    BigDecimal::add);
-                // 累计售票数
-                countByMovie.merge(movieId,
-                    order.getSeatCount() != null ? order.getSeatCount() : 0,
-                    Integer::sum);
-            }
-        }
-
-        // 构建排行列表
         List<Map<String, Object>> ranking = new ArrayList<>();
-        for (Map.Entry<Long, BigDecimal> entry : revenueByMovie.entrySet()) {
-            Long movieId = entry.getKey();
-            Movie movie = movieMapper.selectById(movieId);
+        int count = 0;
+        for (Map<String, Object> row : rows) {
+            if (count >= limit) break;
+            Long movieId = toLong(row.get("movieId"));
+            Movie movie = movieId != null ? movieMapper.selectById(movieId) : null;
 
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("movieId", movieId);
             item.put("movieName", movie != null ? movie.getMovieName() : "未知影片");
             item.put("posterUrl", movie != null ? movie.getPosterUrl() : "");
-            item.put("revenue", entry.getValue());
-            item.put("ticketCount", countByMovie.getOrDefault(movieId, 0));
+            item.put("revenue", toBigDecimal(row.get("revenue")));
+            item.put("ticketCount", ((Number) row.get("ticketCount")).intValue());
             ranking.add(item);
-        }
-
-        // 按营收降序排序
-        ranking.sort((a, b) -> {
-            BigDecimal revA = (BigDecimal) a.get("revenue");
-            BigDecimal revB = (BigDecimal) b.get("revenue");
-            return revB.compareTo(revA);
-        });
-
-        // 限制返回数量
-        if (ranking.size() > limit) {
-            ranking = ranking.subList(0, limit);
+            count++;
         }
 
         log.info("影片排行榜查询: 共{}部影片", ranking.size());
@@ -158,140 +98,102 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     /**
      * 获取每日营收数据（用于前端趋势图）
-     * 按支付时间(日期级别)分组统计，按日期升序排列
-     *
-     * @param startDate 开始日期
-     * @param endDate   结束日期
-     * @return 每日数据列表
+     * 使用数据库GROUP BY DATE聚合
      */
     @Override
     public List<Map<String, Object>> getDailyRevenue(LocalDate startDate, LocalDate endDate) {
         if (startDate == null) startDate = LocalDate.now().minusDays(30);
         if (endDate == null) endDate = LocalDate.now();
 
-        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(Order::getStatus, 1, 2);
-        wrapper.ge(Order::getPayTime, startDate.atStartOfDay());
-        wrapper.le(Order::getPayTime, endDate.plusDays(1).atStartOfDay());
+        LocalDateTime startTime = startDate.atStartOfDay();
+        LocalDateTime endTime = endDate.plusDays(1).atStartOfDay();
 
-        List<Order> orders = orderMapper.selectList(wrapper);
-
-        // 按日期分组
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        Map<String, List<Order>> grouped = orders.stream()
-            .filter(o -> o.getPayTime() != null)
-            .collect(Collectors.groupingBy(
-                o -> o.getPayTime().format(dateFormatter),
-                LinkedHashMap::new,
-                Collectors.toList()));
+        List<Map<String, Object>> rows = orderMapper.aggregateDailyRevenue(startTime, endTime);
 
         // 构建完整的日期范围（包括没有订单的日期）
+        Map<String, Map<String, Object>> dataMap = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            String dateKey = row.get("date").toString();
+            dataMap.put(dateKey, row);
+        }
+
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         List<Map<String, Object>> dailyData = new ArrayList<>();
         long days = ChronoUnit.DAYS.between(startDate, endDate) + 1;
         for (int i = 0; i < days; i++) {
             LocalDate date = startDate.plusDays(i);
             String dateKey = date.format(dateFormatter);
-            List<Order> dayOrders = grouped.getOrDefault(dateKey, List.of());
-
-            BigDecimal dayRevenue = BigDecimal.ZERO;
-            int dayOrderCount = dayOrders.size();
-            for (Order o : dayOrders) {
-                if (o.getTotalPrice() != null) {
-                    dayRevenue = dayRevenue.add(o.getTotalPrice());
-                }
-            }
+            Map<String, Object> row = dataMap.get(dateKey);
 
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("date", dateKey);
-            item.put("revenue", dayRevenue);
-            item.put("orderCount", dayOrderCount);
+            if (row != null) {
+                item.put("revenue", toBigDecimal(row.get("revenue")));
+                item.put("orderCount", ((Number) row.get("orderCount")).intValue());
+            } else {
+                item.put("revenue", BigDecimal.ZERO);
+                item.put("orderCount", 0);
+            }
             dailyData.add(item);
         }
 
-        log.info("每日营收统计: {} ~ {} -> {} 天", startDate, endDate, dailyData.size());
         return dailyData;
     }
 
     /**
      * 获取最近12个月的月度统计数据
-     * 从当前月份往前推12个月，统计每月的营收、订单数、售票数
-     *
-     * @return 月度数据列表
+     * 使用数据库GROUP BY DATE_FORMAT聚合
      */
     @Override
     public List<Map<String, Object>> getMonthlyData() {
         LocalDate now = LocalDate.now();
-        // 从12个月前开始
         LocalDate startDate = now.minus(12, ChronoUnit.MONTHS).withDayOfMonth(1);
 
-        // 查询范围内的所有订单
-        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(Order::getStatus, 1, 2);
-        wrapper.ge(Order::getCreateTime, startDate.atStartOfDay());
-        wrapper.le(Order::getCreateTime, now.plusDays(1).atStartOfDay());
-        List<Order> orders = orderMapper.selectList(wrapper);
+        LocalDateTime startTime = startDate.atStartOfDay();
+        LocalDateTime endTime = now.plusDays(1).atStartOfDay();
 
-        // 按月分组（格式: yyyy-MM）
+        List<Map<String, Object>> rows = orderMapper.aggregateMonthly(startTime, endTime);
+
+        Map<String, Map<String, Object>> dataMap = new LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            String monthKey = row.get("month").toString();
+            dataMap.put(monthKey, row);
+        }
+
         DateTimeFormatter monthFormatter = DateTimeFormatter.ofPattern("yyyy-MM");
-        Map<String, List<Order>> groupedByMonth = orders.stream()
-            .collect(Collectors.groupingBy(
-                o -> o.getCreateTime() != null ? o.getCreateTime().format(monthFormatter) : "未知",
-                LinkedHashMap::new,
-                Collectors.toList()));
-
-        // 构建完整的12个月数据（包括没有订单的月份）
         List<Map<String, Object>> monthlyData = new ArrayList<>();
         for (int i = 11; i >= 0; i--) {
             LocalDate month = now.minus(i, ChronoUnit.MONTHS);
             String monthKey = month.format(monthFormatter);
-
-            List<Order> monthOrders = groupedByMonth.getOrDefault(monthKey, List.of());
-
-            BigDecimal monthRevenue = BigDecimal.ZERO;
-            int monthOrderCount = monthOrders.size();
-            int monthTicketCount = 0;
-
-            for (Order order : monthOrders) {
-                if (order.getTotalPrice() != null) {
-                    monthRevenue = monthRevenue.add(order.getTotalPrice());
-                }
-                if (order.getSeatCount() != null) {
-                    monthTicketCount += order.getSeatCount();
-                }
-            }
+            Map<String, Object> row = dataMap.get(monthKey);
 
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("month", monthKey);
             item.put("monthName", month.getMonthValue() + "月");
             item.put("year", month.getYear());
-            item.put("revenue", monthRevenue);
-            item.put("orderCount", monthOrderCount);
-            item.put("ticketCount", monthTicketCount);
+            if (row != null) {
+                item.put("revenue", toBigDecimal(row.get("revenue")));
+                item.put("orderCount", ((Number) row.get("orderCount")).intValue());
+                item.put("ticketCount", ((Number) row.get("ticketCount")).intValue());
+            } else {
+                item.put("revenue", BigDecimal.ZERO);
+                item.put("orderCount", 0);
+                item.put("ticketCount", 0);
+            }
             monthlyData.add(item);
         }
 
-        log.info("月度数据统计: 共{}个月有订单数据", groupedByMonth.size());
+        log.info("月度数据统计完成");
         return monthlyData;
     }
 
-    /**
-     * 导出统计报表为Excel文件
-     * 使用Apache POI生成xlsx格式文件
-     *
-     * @param startDate 开始日期
-     * @param endDate   结束日期
-     * @return Excel文件的相对路径
-     */
     @Override
     public String exportToExcel(LocalDate startDate, LocalDate endDate) {
-        // 获取数据
         Map<String, Object> revenue = getRevenue(startDate, endDate);
         List<Map<String, Object>> ranking = getMovieRanking(10);
         List<Map<String, Object>> monthly = getMonthlyData();
 
-        // 创建工作簿
         try (Workbook workbook = new XSSFWorkbook()) {
-            // ===== Sheet1: 营收概览 =====
             Sheet sheet1 = workbook.createSheet("营收概览");
             Row header1 = sheet1.createRow(0);
             header1.createCell(0).setCellValue("统计项");
@@ -310,11 +212,9 @@ public class StatisticsServiceImpl implements StatisticsService {
                 row.createCell(0).setCellValue(overviewData[i][0]);
                 row.createCell(1).setCellValue(overviewData[i][1]);
             }
-            // 自动调整列宽
             sheet1.setColumnWidth(0, 20 * 256);
             sheet1.setColumnWidth(1, 15 * 256);
 
-            // ===== Sheet2: 影片票房排行 =====
             Sheet sheet2 = workbook.createSheet("影片票房排行");
             Row header2 = sheet2.createRow(0);
             header2.createCell(0).setCellValue("排名");
@@ -326,16 +226,15 @@ public class StatisticsServiceImpl implements StatisticsService {
                 Row row = sheet2.createRow(i + 1);
                 Map<String, Object> item = ranking.get(i);
                 row.createCell(0).setCellValue(i + 1);
-                row.createCell(1).setCellValue(item.get("movieName").toString());
-                row.createCell(2).setCellValue(item.get("revenue").toString());
-                row.createCell(3).setCellValue(item.get("ticketCount").toString());
+                row.createCell(1).setCellValue(String.valueOf(item.get("movieName")));
+                row.createCell(2).setCellValue(String.valueOf(item.get("revenue")));
+                row.createCell(3).setCellValue(String.valueOf(item.get("ticketCount")));
             }
             sheet2.setColumnWidth(0, 10 * 256);
             sheet2.setColumnWidth(1, 30 * 256);
             sheet2.setColumnWidth(2, 15 * 256);
             sheet2.setColumnWidth(3, 12 * 256);
 
-            // ===== Sheet3: 月度趋势 =====
             Sheet sheet3 = workbook.createSheet("月度趋势");
             Row header3 = sheet3.createRow(0);
             header3.createCell(0).setCellValue("月份");
@@ -346,29 +245,26 @@ public class StatisticsServiceImpl implements StatisticsService {
             for (int i = 0; i < monthly.size(); i++) {
                 Row row = sheet3.createRow(i + 1);
                 Map<String, Object> item = monthly.get(i);
-                row.createCell(0).setCellValue(item.get("month").toString());
-                row.createCell(1).setCellValue(item.get("revenue").toString());
-                row.createCell(2).setCellValue(item.get("orderCount").toString());
-                row.createCell(3).setCellValue(item.get("ticketCount").toString());
+                row.createCell(0).setCellValue(String.valueOf(item.get("month")));
+                row.createCell(1).setCellValue(String.valueOf(item.get("revenue")));
+                row.createCell(2).setCellValue(String.valueOf(item.get("orderCount")));
+                row.createCell(3).setCellValue(String.valueOf(item.get("ticketCount")));
             }
             sheet3.setColumnWidth(0, 15 * 256);
             sheet3.setColumnWidth(1, 15 * 256);
             sheet3.setColumnWidth(2, 12 * 256);
             sheet3.setColumnWidth(3, 12 * 256);
 
-            // 确保上传目录存在
             String uploadDir = "./uploads/reports/";
             File dir = new File(uploadDir);
             if (!dir.exists()) {
                 dir.mkdirs();
             }
 
-            // 生成文件名
             String fileName = "statistics_" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
                 + "_" + System.currentTimeMillis() + ".xlsx";
             String filePath = uploadDir + fileName;
 
-            // 写入文件
             try (FileOutputStream fos = new FileOutputStream(filePath)) {
                 workbook.write(fos);
             }
@@ -380,5 +276,17 @@ public class StatisticsServiceImpl implements StatisticsService {
             log.error("Excel导出失败", e);
             throw new RuntimeException("Excel导出失败: " + e.getMessage());
         }
+    }
+
+    private BigDecimal toBigDecimal(Object val) {
+        if (val == null) return BigDecimal.ZERO;
+        if (val instanceof BigDecimal) return (BigDecimal) val;
+        return new BigDecimal(val.toString());
+    }
+
+    private long toLong(Object val) {
+        if (val == null) return 0L;
+        if (val instanceof Number) return ((Number) val).longValue();
+        return Long.parseLong(val.toString());
     }
 }

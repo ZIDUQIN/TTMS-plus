@@ -42,7 +42,8 @@ public interface ScheduleMapper extends BaseMapper<Schedule> {
             "FROM schedule s " +
             "LEFT JOIN movie m ON s.movie_id = m.id " +
             "LEFT JOIN hall h ON s.hall_id = h.id " +
-            "WHERE s.hall_id = #{hallId} AND s.deleted = 0")
+            "WHERE s.hall_id = #{hallId} AND s.deleted = 0 " +
+            "AND s.status = 1 AND s.end_time > NOW()")
     List<Schedule> selectByHallId(@Param("hallId") Long hallId);
 
     /**
@@ -109,4 +110,22 @@ public interface ScheduleMapper extends BaseMapper<Schedule> {
             "WHERE DATE(s.start_time) BETWEEN #{startDate} AND #{endDate} AND s.deleted = 0")
     List<Schedule> selectByDateRangeWithHall(@Param("startDate") String startDate,
                                               @Param("endDate") String endDate);
+
+    /**
+     * 查询已过期但状态仍为"正常放映"的场次
+     */
+    @Select("SELECT * FROM schedule WHERE status = 1 AND end_time < NOW() AND deleted = 0")
+    List<Schedule> selectActiveExpired();
+
+    /**
+     * 将场次标记为已结束
+     */
+    @Update("UPDATE schedule SET status = 2, update_time = NOW() WHERE id = #{id} AND status = 1")
+    int markEnded(@Param("id") Long id);
+
+    /**
+     * 查询影厅所有场次（含已取消/已结束），用于删除影厅时的全面检查
+     */
+    @Select("SELECT * FROM schedule WHERE hall_id = #{hallId} AND deleted = 0")
+    List<Schedule> selectByHallIdForDelete(@Param("hallId") Long hallId);
 }

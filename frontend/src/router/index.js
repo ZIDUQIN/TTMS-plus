@@ -5,7 +5,9 @@ import { ElMessage } from 'element-plus'
 const routes = [
   {
     path: '/',
-    redirect: '/home'
+    name: 'Landing',
+    component: () => import('@/views/user/Landing.vue'),
+    meta: { title: 'TTMS - 智能影院管理系统', public: true }
   },
   {
     path: '/login',
@@ -104,6 +106,55 @@ const routes = [
     component: () => import('@/views/admin/SystemSettings.vue'),
     meta: { title: '系统设置', requiresAuth: true, role: 'ROLE_SUPER_ADMIN' }
   },
+  // === 新功能页面 ===
+  {
+    path: '/admin/pos',
+    name: 'Pos',
+    component: () => import('@/views/admin/PosView.vue'),
+    meta: { title: '柜台售票', requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/admin/members',
+    name: 'MemberManage',
+    component: () => import('@/views/admin/MemberManage.vue'),
+    meta: { title: '会员管理', requiresAuth: true, requiresAdmin: true, role: 'ROLE_SUPER_ADMIN' }
+  },
+  {
+    path: '/admin/coupons-manage',
+    name: 'CouponManage',
+    component: () => import('@/views/admin/CouponManage.vue'),
+    meta: { title: '优惠券管理', requiresAuth: true, requiresAdmin: true, role: 'ROLE_SUPER_ADMIN' }
+  },
+  {
+    path: '/admin/shifts',
+    name: 'ShiftManage',
+    component: () => import('@/views/admin/ShiftManage.vue'),
+    meta: { title: '交接班', requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/admin/snacks',
+    name: 'SnackManage',
+    component: () => import('@/views/admin/SnackManage.vue'),
+    meta: { title: '卖品管理', requiresAuth: true, requiresAdmin: true, role: 'ROLE_SUPER_ADMIN' }
+  },
+  {
+    path: '/admin/reports',
+    name: 'ReportView',
+    component: () => import('@/views/admin/ReportView.vue'),
+    meta: { title: '报表', requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/ticket/:id',
+    name: 'TicketDetail',
+    component: () => import('@/views/user/TicketDetail.vue'),
+    meta: { title: '电子票', requiresAuth: true, role: 'ROLE_USER' }
+  },
+  {
+    path: '/my-coupons',
+    name: 'MyCoupons',
+    component: () => import('@/views/user/MyCoupons.vue'),
+    meta: { title: '我的优惠券', requiresAuth: true, role: 'ROLE_USER' }
+  },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
@@ -123,6 +174,11 @@ const router = createRouter({
 // Navigation guard
 router.beforeEach((to, from, next) => {
   document.title = to.meta.title ? `${to.meta.title} - TTMS` : 'TTMS - 电影院综合管理系统'
+
+  // 记住最后访问的页面（非登录页），刷新后可恢复
+  if (to.name && to.name !== 'Login' && to.name !== 'Register') {
+    sessionStorage.setItem('ttms-last-route', to.fullPath)
+  }
 
   const authStore = useAuthStore()
 
@@ -149,7 +205,11 @@ router.beforeEach((to, from, next) => {
   if (to.meta.role === 'ROLE_SUPER_ADMIN') {
     if (authStore.user?.roleCode !== 'ROLE_SUPER_ADMIN') {
       ElMessage.error('仅超级管理员可访问此页面')
-      return next({ name: 'AdminDashboard' })
+      // Redirect to appropriate page based on user role to avoid redirect chain
+      if (authStore.isAdmin) {
+        return next({ name: 'AdminDashboard' })
+      }
+      return next({ name: 'Home' })
     }
   }
 

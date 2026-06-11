@@ -167,4 +167,14 @@ public class JwtTokenProvider {
         Claims claims = parseClaims(token);
         return claims.get("loginType", String.class);
     }
+
+    /**
+     * 获取令牌的过期时间戳（epoch秒）
+     * @param token JWT令牌字符串
+     * @return 过期时间戳（秒）
+     */
+    public long getExpiration(String token) {
+        Claims claims = parseClaims(token);
+        return claims.getExpiration().getTime() / 1000;
+    }
 }

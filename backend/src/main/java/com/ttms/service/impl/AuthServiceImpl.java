@@ -49,11 +49,18 @@ public class AuthServiceImpl implements AuthService {
         String password = request.getPassword();
         String loginType = request.getLoginType();
 
-        // 自动检测模式（loginType为空）：先查employee表，再查user表
+        // 自动检测模式（loginType为空/null时）：先employee表再user表，兼容现有前端
         boolean autoDetect = (loginType == null || loginType.isEmpty());
+        boolean isAdminLogin = "ADMIN".equalsIgnoreCase(loginType);
+        boolean isUserLogin = "USER".equalsIgnoreCase(loginType);
+
+        // 非空值时校验loginType合法性（H8审计修复）
+        if (!autoDetect && !isAdminLogin && !isUserLogin) {
+            throw new BusinessException(400, "登录类型无效，请指定 loginType=USER 或 loginType=ADMIN");
+        }
 
         // ========== 管理端登录 ==========
-        if ("ADMIN".equalsIgnoreCase(loginType) || autoDetect) {
+        if (isAdminLogin || autoDetect) {
             Employee employee = employeeMapper.findByUsername(username);
             if (employee != null && employee.getStatus() != null && employee.getStatus() == 0) {
                 if (passwordEncoder.matches(password, employee.getPassword())) {
@@ -77,7 +84,7 @@ public class AuthServiceImpl implements AuthService {
                         .permissions(parsePermissions(role.getPermissions()))
                         .build();
                 }
-                // 密码错误时，如果是显式ADMIN登录，直接报错；自动检测则继续尝试user表
+                // 密码错：显式ADMIN直接报错，autoDetect继续试user表
                 if (!autoDetect) {
                     throw new BusinessException(401, "用户名或密码错误");
                 }
@@ -87,7 +94,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // ========== 用户端登录 ==========
-        if ("USER".equalsIgnoreCase(loginType) || autoDetect) {
+        if (isUserLogin || autoDetect) {
             User user = userMapper.findByUsername(username);
             if (user != null && user.getStatus() != null && user.getStatus() == 0) {
                 if (passwordEncoder.matches(password, user.getPassword())) {
@@ -156,31 +163,45 @@ public class AuthServiceImpl implements AuthService {
 
     /**
      * 修改密码
+     * 支持普通用户(User表)和员工(Employee表)两种身份
      * 原密码验证通过后才能修改为新密码
      *
-     * @param userId      用户ID
+     * @param userId      用户ID（可能是User.id或Employee.id）
      * @param oldPassword 原密码
      * @param newPassword 新密码
      */
     @Override
     public void changePassword(Long userId, String oldPassword, String newPassword) {
-        User user = userMapper.selectById(userId);
-        if (user == null) {
-            throw new BusinessException("用户不存在");
-        }
-        // 验证原密码是否正确
-        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
-            throw new BusinessException(400, "原密码错误");
-        }
         // 校验新旧密码不能相同
         if (oldPassword.equals(newPassword)) {
             throw new BusinessException(400, "新密码不能与原密码相同");
         }
-        // 加密新密码并更新
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userMapper.updateById(user);
 
-        log.info("密码修改成功: userId={}", userId);
+        // ========== 先尝试User表 ==========
+        User user = userMapper.selectById(userId);
+        if (user != null) {
+            if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+                throw new BusinessException(400, "原密码错误");
+            }
+            user.setPassword(passwordEncoder.encode(newPassword));
+            userMapper.updateById(user);
+            log.info("用户密码修改成功: userId={}, type=USER", userId);
+            return;
+        }
+
+        // ========== 再尝试Employee表 ==========
+        Employee employee = employeeMapper.selectById(userId);
+        if (employee != null) {
+            if (!passwordEncoder.matches(oldPassword, employee.getPassword())) {
+                throw new BusinessException(400, "原密码错误");
+            }
+            employee.setPassword(passwordEncoder.encode(newPassword));
+            employeeMapper.updateById(employee);
+            log.info("员工密码修改成功: userId={}, type=EMPLOYEE", userId);
+            return;
+        }
+
+        throw new BusinessException("用户不存在");
     }
 
     /**

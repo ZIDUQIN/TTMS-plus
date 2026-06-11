@@ -64,6 +64,24 @@ public class Movie {
     /** 评分 */
     private Double rating;
 
+    /** 预告片URL */
+    private String trailerUrl;
+
+    /** 剧照JSON数组 */
+    private String stills;
+
+    /** 内容分级: G/PG/PG-13/R/NC-17 */
+    private String contentRating;
+
+    /** 豆瓣评分 */
+    private Double doubanRating;
+
+    /** IMDb评分 */
+    private Double imdbRating;
+
+    /** 标签(逗号分隔) */
+    private String tags;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

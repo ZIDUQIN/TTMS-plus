@@ -1,6 +1,5 @@
 <template>
   <div class="admin-layout">
-    <NavBar />
     <div class="admin-content box-office-page">
       <!-- ========== 顶部区域 ========== -->
       <div class="bo-top-bar">
@@ -239,7 +238,6 @@ import {
   getBoxOfficeDashboard,
   getBoxOfficeMovieTrend
 } from '@/api/boxOffice'
-import NavBar from '@/components/NavBar.vue'
 import { FullScreen, CopyDocument, VideoCameraFilled } from '@element-plus/icons-vue'
 
 // ========== 持久化 key ==========

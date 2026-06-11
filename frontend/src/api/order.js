@@ -45,6 +45,14 @@ export function rescheduleOrder(data) {
   })
 }
 
+// Cancel unpaid order
+export function cancelOrder(orderId) {
+  return request({
+    url: `/user/orders/cancel/${orderId}`,
+    method: 'post'
+  })
+}
+
 // Refund order
 export function refundOrder(orderId) {
   return request({
@@ -139,6 +147,24 @@ export function deleteSchedule(id) {
   return request({
     url: `/schedules/delete/${id}`,
     method: 'delete'
+  })
+}
+
+// Batch delete schedules (admin)
+export function batchDeleteSchedules(ids) {
+  return request({
+    url: '/schedules/batch-delete',
+    method: 'delete',
+    data: { ids }
+  })
+}
+
+// Batch add schedules (admin)
+export function batchAddSchedule(data) {
+  return request({
+    url: '/schedules/batch',
+    method: 'post',
+    data
   })
 }
 
