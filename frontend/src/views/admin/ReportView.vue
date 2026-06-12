@@ -304,12 +304,12 @@ onMounted(fetchData)
   background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-xl);
   padding: 24px; transition: all 0.3s ease; position: relative; overflow: hidden;
 }
-[data-theme='dark'] .glass-card { background: rgba(20,20,35,0.7); backdrop-filter: blur(20px); border-color: rgba(255,255,255,0.05); }
+[data-theme=.dark.] .glass-card { background: rgba(20,20,35,0.95); border-color: rgba(255,255,255,0.05); }
 .glass-card:hover { transform: translateY(-4px); border-color: rgba(232,168,80,0.3); }
 .glass-card--lg { grid-column: span 5; }
 .glass-card--wide { grid-column: span 8; }
 
-.glass-card__glow { position: absolute; top: 0; right: 0; width: 120px; height: 120px; background: rgba(232,168,80,0.04); border-radius: 50%; filter: blur(48px); pointer-events: none; }
+.glass-card__glow { position: absolute; top: 0; right: 0; width: 120px; height: 120px; background: rgba(232,168,80,0.04); border-radius: 50%; pointer-events: none; }
 .glass-card__top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
 .glass-card__icon { padding: 12px; background: rgba(232,168,80,0.08); border-radius: var(--radius-lg); color: var(--color-primary); }
 .glass-card__icon .material-symbols-outlined { font-size: 28px; }

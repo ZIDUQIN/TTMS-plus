@@ -265,7 +265,7 @@ onMounted(fetchScheduleDetail)
 /* Top Header */
 .seat-topbar {
   position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center;
-  padding: 14px 32px; background: rgba(20,20,31,0.85); backdrop-filter: blur(16px);
+  padding: 14px 32px; background: rgba(20,20,31,0.95);
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 .stb-left { display: flex; align-items: center; gap: 16px; }
@@ -282,7 +282,7 @@ onMounted(fetchScheduleDetail)
 .seat-main { display: flex; gap: 20px; padding: 16px 32px; max-width: 1440px; margin: 0 auto; height: calc(100vh - 120px); align-items: stretch; }
 
 /* Glass Card */
-.glass-card { background: rgba(20,20,31,0.75); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; }
+.glass-card { background: rgba(20,20,31,0.95); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; }
 
 /* Left */
 .seat-left { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; }
@@ -305,7 +305,7 @@ onMounted(fetchScheduleDetail)
 /* Center */
 .seat-center { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
 .screen-area { width: 100%; max-width: 600px; text-align: center; margin-bottom: 40px; position: relative; }
-.screen-bloom { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); width: 80%; height: 40px; background: linear-gradient(to bottom, rgba(232,168,80,0.2), transparent); filter: blur(16px); border-radius: 50%; }
+.screen-bloom { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); width: 80%; height: 40px; background: linear-gradient(to bottom, rgba(232,168,80,0.2), transparent); filter: blur(4px); border-radius: 50%; }
 .screen-curve { height: 4px; background: linear-gradient(90deg, transparent 5%, var(--color-primary) 20%, var(--color-primary) 80%, transparent 95%); border-radius: 50% / 100% 100% 0 0; box-shadow: 0 0 20px rgba(232,168,80,0.5), 0 4px 12px rgba(232,168,80,0.3); }
 .screen-label { margin-top: 14px; font-size: 10px; color: rgba(232,168,80,0.6); letter-spacing: 8px; font-weight: 500; }
 

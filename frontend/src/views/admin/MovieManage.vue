@@ -251,8 +251,8 @@ onMounted(fetchMovies)
 <style scoped>
 .admin-layout { min-height:100vh; background:#0A0A10; position:relative; overflow:hidden; }
 .movie-atmosphere { position:fixed; inset:0; pointer-events:none; z-index:0; }
-.movie-atmosphere::before { content:''; position:absolute; top:-10%; left:-10%; width:40%; height:40%; background:radial-gradient(circle, rgba(232,168,80,0.03), transparent 70%); border-radius:50%; filter:blur(120px); }
-.movie-atmosphere::after { content:''; position:absolute; bottom:-10%; right:-10%; width:40%; height:40%; background:radial-gradient(circle, rgba(45,207,138,0.02), transparent 70%); border-radius:50%; filter:blur(120px); }
+.movie-atmosphere::before { content:''; position:absolute; top:-10%; left:-10%; width:40%; height:40%; background:radial-gradient(circle, rgba(232,168,80,0.015), transparent 70%); border-radius:50%; }
+.movie-atmosphere::after { content:''; position:absolute; bottom:-10%; right:-10%; width:40%; height:40%; background:radial-gradient(circle, rgba(45,207,138,0.01), transparent 70%); border-radius:50%; }
 
 .movie-page { max-width:1440px; margin:0 auto; padding:32px; position:relative; z-index:1; }
 
@@ -279,13 +279,13 @@ onMounted(fetchMovies)
 .mv-poster img { width:100%; height:100%; object-fit:cover; transition:transform .6s; }
 .mv-card:hover .mv-poster img { transform:scale(1.1); }
 .mv-poster-gradient { position:absolute; inset:0; background:linear-gradient(to top, rgba(10,10,16,0.9), transparent 60%); opacity:0.6; }
-.mv-status { position:absolute; top:10px; right:10px; padding:3px 10px; border-radius:12px; font-size:10px; font-weight:700; backdrop-filter:blur(8px); letter-spacing:0.5px; }
+.mv-status { position:absolute; top:10px; right:10px; padding:3px 10px; border-radius:12px; font-size:10px; font-weight:700; background:rgba(0,0,0,0.45); letter-spacing:0.5px; }
 .mv-status.on { background:rgba(26,107,76,0.15); color:#2DCF8A; border:1px solid rgba(45,207,138,0.25); }
 .mv-status.soon { background:rgba(91,141,239,0.1); color:#5B8DEF; border:1px solid rgba(91,141,239,0.25); }
 .mv-status.off { background:rgba(92,90,106,0.15); color:#5C5A6A; border:1px solid rgba(92,90,106,0.25); }
 
 /* Overlay */
-.mv-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:10px; background:rgba(10,10,16,0.5); backdrop-filter:blur(2px); opacity:0; transition:opacity .25s; }
+.mv-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:10px; background:rgba(10,10,16,0.65); opacity:0; transition:opacity .25s; }
 .mv-card:hover .mv-overlay { opacity:1; }
 .mv-obtn { width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.08); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; }
 .mv-obtn:hover { background:var(--color-primary); color:#1A1814; border-color:var(--color-primary); transform:scale(1.1); }

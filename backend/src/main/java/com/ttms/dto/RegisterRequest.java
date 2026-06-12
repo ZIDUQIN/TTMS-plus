@@ -23,4 +23,6 @@ public class RegisterRequest {
     private String email;
 
     private String nickname;
+
+    private String realName;
 }

@@ -111,4 +111,14 @@ public interface OrderService {
      * @param userId  用户ID
      */
     void cancelOrder(Long orderId, Long userId);
+
+    /**
+     * 协助退票（管理端替用户退票）
+     * 释放座位、退回金额、记录操作日志，跳过用户所有权校验
+     *
+     * @param orderId    订单ID
+     * @param operatorId 操作员工ID
+     * @return 退票后的订单
+     */
+    Order assistRefund(Long orderId, Long operatorId);
 }

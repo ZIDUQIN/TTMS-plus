@@ -218,7 +218,7 @@ onMounted(fetchData)
   inset: 0;
   background-size: cover;
   background-position: center;
-  filter: blur(60px) brightness(0.3);
+  filter: blur(4px) brightness(0.3);
   transform: scale(1.2);
 }
 

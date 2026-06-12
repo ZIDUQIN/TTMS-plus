@@ -136,7 +136,7 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     @Transactional
-    public void register(RegisterRequest request) {
+    public Long register(RegisterRequest request) {
         // 检查用户名是否已被占用
         User existingUser = userMapper.findByUsername(request.getUsername());
         if (existingUser != null) {
@@ -154,11 +154,13 @@ public class AuthServiceImpl implements AuthService {
         user.setPhone(request.getPhone());
         user.setEmail(request.getEmail());
         user.setNickname(request.getNickname() != null ? request.getNickname() : request.getUsername());
+        user.setRealName(request.getRealName() != null ? request.getRealName() : request.getNickname());
         user.setStatus(0);    // 默认正常状态
         user.setTheme("white"); // 默认白色主题
 
         userMapper.insert(user);
-        log.info("用户注册成功: 用户名={}", user.getUsername());
+        log.info("用户注册成功: 用户名={}, id={}", user.getUsername(), user.getId());
+        return user.getId();
     }
 
     /**

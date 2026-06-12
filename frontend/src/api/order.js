@@ -89,6 +89,14 @@ export function assistPayOrder(orderId) {
   })
 }
 
+// Assist refund order (admin)
+export function assistRefundOrder(orderId) {
+  return request({
+    url: `/admin/orders/assist-refund/${orderId}`,
+    method: 'post'
+  })
+}
+
 // ===== Schedule APIs =====
 
 // Get schedules by movie

@@ -99,10 +99,12 @@
           <el-table-column label="时间" width="150">
             <template #default="{ row }">{{ formatDateTime(row.createTime || row.createdAt) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="90" fixed="right">
+          <el-table-column label="操作" width="100" fixed="right">
             <template #default="{ row }">
               <button v-if="(row.status ?? row.orderStatus) === 0" class="pay-btn" :disabled="payingOrderId === row.id"
                 @click="handlePay(row)">{{ payingOrderId === row.id ? '...' : '支付' }}</button>
+              <button v-else-if="(row.status ?? row.orderStatus) === 1" class="refund-btn" :disabled="refundingOrderId === row.id"
+                @click="handleRefund(row)">{{ refundingOrderId === row.id ? '...' : '退票' }}</button>
               <span v-else class="cell-sub">--</span>
             </template>
           </el-table-column>
@@ -117,9 +119,13 @@
       </el-steps>
       <div v-show="assistStep === 0">
         <el-table :data="movies" highlight-current-row @current-change="onSelectMovie" max-height="300">
-          <el-table-column prop="movieName" label="影片名称" />
-          <el-table-column prop="genre" label="类型" width="80" />
-          <el-table-column label="票价" width="80"><template #default="{ row }">¥{{ row.basePrice || row.price }}</template></el-table-column>
+          <el-table-column prop="name" label="影片名称" min-width="160" show-overflow-tooltip />
+          <el-table-column prop="genre" label="类型" width="80" show-overflow-tooltip>
+            <template #default="{ row }"><span class="cell-nowrap">{{ row.genre || '--' }}</span></template>
+          </el-table-column>
+          <el-table-column label="票价" width="100">
+            <template #default="{ row }"><span class="cell-nowrap">¥{{ row.basePrice || row.price || '--' }}</span></template>
+          </el-table-column>
         </el-table>
       </div>
       <div v-show="assistStep === 1">
@@ -150,13 +156,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getAdminOrders, assistCreateOrder, assistPayOrder, getSchedulesByMovie, getScheduleSeats } from '@/api/order'
+import { getAdminOrders, assistCreateOrder, assistPayOrder, assistRefundOrder, getSchedulesByMovie, getScheduleSeats } from '@/api/order'
 import { getMovieList } from '@/api/movie'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 
 const orders = ref([]); const loading = ref(false); const searchText = ref('')
-const filterStatus = ref(''); const dateRange = ref([]); const payingOrderId = ref(null)
+const filterStatus = ref(''); const dateRange = ref([]); const payingOrderId = ref(null); const refundingOrderId = ref(null)
 
 const assistVisible = ref(false); const assistStep = ref(0); const movies = ref([])
 const assistSelectedMovie = ref(null); const assistSchedules = ref([])
@@ -235,6 +241,11 @@ async function handlePay(row) {
   payingOrderId.value = row.id; try { await assistPayOrder(row.id); ElMessage.success('支付成功'); await fetchOrders() } catch {} finally { payingOrderId.value = null }
 }
 
+async function handleRefund(row) {
+  try { await ElMessageBox.confirm(`确认为订单 ${row.orderNo}（¥${row.totalAmount||row.totalPrice}）办理退票？退款将原路返回。`, '确认退票', { confirmButtonText:'确认退票', cancelButtonText:'取消', type:'warning' }) } catch { return }
+  refundingOrderId.value = row.id; try { await assistRefundOrder(row.id); ElMessage.success('退票成功'); await fetchOrders() } catch {} finally { refundingOrderId.value = null }
+}
+
 onMounted(fetchOrders)
 </script>
 
@@ -290,9 +301,15 @@ onMounted(fetchOrders)
 .badge-danger { background: rgba(232,64,64,0.08); color: var(--color-danger); }
 .badge-gray { background: var(--bg-hover); color: var(--text-tertiary); }
 
+.cell-nowrap { white-space: nowrap; }
+
 .pay-btn { padding: 4px 14px; border: 1px solid var(--color-primary); border-radius: var(--radius-sm); background: transparent; color: var(--color-primary); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
 .pay-btn:hover { background: var(--color-primary); color: #fff; }
 .pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.refund-btn { padding: 4px 14px; border: 1px solid var(--color-danger); border-radius: var(--radius-sm); background: transparent; color: var(--color-danger); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.refund-btn:hover { background: var(--color-danger); color: #fff; }
+.refund-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .assist-seats { display: flex; flex-wrap: wrap; gap: 8px; max-height: 300px; overflow-y: auto; padding: 8px; background: var(--bg-secondary); border-radius: var(--radius-md); }
 .assist-seat { width: 52px; text-align: center; padding: 6px 2px; border-radius: 4px; background: var(--bg-card); border: 1px solid var(--border-color); cursor: pointer; font-size: 11px; transition: all 0.15s; }

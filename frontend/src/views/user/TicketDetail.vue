@@ -242,7 +242,7 @@ onMounted(fetchOrder)
   position: fixed; top: 0; left: 0; right: 0; z-index: 50;
   background: var(--bg-card); border-bottom: 1px solid var(--border-light);
 }
-[data-theme='dark'] .ticket-nav { background: rgba(20,20,31,0.7); backdrop-filter: blur(20px); }
+[data-theme=.dark.] .ticket-nav { background: rgba(20,20,31,0.95); }
 
 .ticket-nav__inner {
   max-width: 1280px; margin: 0 auto; padding: 0 24px; height: 56px;

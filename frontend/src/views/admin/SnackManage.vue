@@ -364,7 +364,7 @@ onMounted(() => { fetchSnacks(); fetchCombos(); fetchOrders() })
 
 /* ---- Ambient Background ---- */
 .ambient-bg { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
-.ambient-orb { position: absolute; border-radius: 50%; filter: blur(120px); }
+.ambient-orb { position: absolute; border-radius: 50%;  }
 .ambient-orb--gold { top: -200px; right: -200px; width: 600px; height: 600px; background: rgba(232, 168, 80, 0.04); }
 .ambient-orb--blue { bottom: -100px; left: -100px; width: 400px; height: 400px; background: rgba(43, 58, 94, 0.15); }
 
@@ -610,7 +610,7 @@ onMounted(() => { fetchSnacks(); fetchCombos(); fetchOrders() })
   border-radius: var(--radius-pill);
   font-size: 11px;
   font-weight: 700;
-  backdrop-filter: blur(12px);
+  background: rgba(27,27,32,0.95);
   letter-spacing: 0.03em;
 }
 
@@ -631,7 +631,7 @@ onMounted(() => { fetchSnacks(); fetchCombos(); fetchOrders() })
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(2px);
+  background: rgba(10,10,16,0.65);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -763,7 +763,7 @@ onMounted(() => { fetchSnacks(); fetchCombos(); fetchOrders() })
   justify-content: center;
   padding: 24px;
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
@@ -786,7 +786,7 @@ onMounted(() => { fetchSnacks(); fetchCombos(); fetchOrders() })
 
 [data-theme='dark'] .modal-panel {
   background: rgba(20, 20, 31, 0.92);
-  backdrop-filter: blur(20px);
+  background: rgba(20,20,31,0.98);
 }
 
 .modal-panel.show { transform: scale(1) translateY(0); }

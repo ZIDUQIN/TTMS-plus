@@ -229,7 +229,7 @@ const rules = {
   username: [{ required: true, message: '请输入用户名' }],
   password: [{ required: true, message: '请输入密码' }, { min: 6, message: '密码至少6位' }],
   realName: [{ required: true, message: '请输入姓名' }],
-  phone: [{ required: true, message: '请输入手机号' }],
+  phone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入有效手机号', trigger: 'blur' }],
   roleCode: [{ required: true, message: '请选择角色' }],
 }
 
@@ -251,20 +251,29 @@ function formatPhone(p) { if (!p) return '--'; return p.replace(/(\d{3})\d{4}(\d
 
 function resetForm() { Object.assign(form, { username: '', password: '', realName: '', phone: '', roleCode: 'ROLE_STAFF' }) }
 
-function openAdd() { isEdit.value = false; editingId.value = null; resetForm(); dialogVisible.value = true }
+function openAdd() { isEdit.value = false; editingId.value = null; resetForm(); formRef.value?.clearValidate(); dialogVisible.value = true }
 
 function openEdit(row) {
   isEdit.value = true; editingId.value = row.id
-  form.username = row.username; form.realName = row.realName
-  form.phone = row.phone; form.roleCode = row.roleCode
+  resetForm()
+  form.username = row.username || ''
+  form.realName = row.realName || ''
+  form.phone = row.phone || ''
+  form.roleCode = row.roleCode || 'ROLE_STAFF'
+  formRef.value?.clearValidate()
   dialogVisible.value = true
 }
 
 async function handleSubmit() {
   if (!formRef.value) return
-  const validateFields = isEdit.value ? ['realName', 'phone', 'roleCode'] : undefined
-  const valid = await formRef.value.validate(validateFields).catch(() => false)
-  if (!valid) return
+  // 编辑模式手动校验，避免 Element Plus 数组 validate 各版本行为不一致导致静默失败
+  if (isEdit.value) {
+    if (!form.realName.trim()) { ElMessage.warning('请输入姓名'); return }
+    if (!form.roleCode) { ElMessage.warning('请选择角色'); return }
+    if (form.phone && !/^1[3-9]\d{9}$/.test(form.phone)) { ElMessage.warning('请输入有效手机号'); return }
+  } else {
+    try { await formRef.value.validate() } catch { return }
+  }
   submitting.value = true
   try {
     const payload = { ...form }
@@ -272,7 +281,9 @@ async function handleSubmit() {
     if (isEdit.value) { await updateEmployee({ id: editingId.value, ...payload }); ElMessage.success('已更新') }
     else { await addEmployee(payload); ElMessage.success('添加成功') }
     dialogVisible.value = false; fetchEmployees()
-  } catch {} finally { submitting.value = false }
+  } catch (e) {
+    ElMessage.error(e?.message || '操作失败，请重试')
+  } finally { submitting.value = false }
 }
 
 async function handleResetPwd(row) {
@@ -356,7 +367,7 @@ onMounted(fetchEmployees)
   background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-xl);
   overflow: hidden;
 }
-[data-theme='dark'] .table-panel { background: rgba(20,20,31,0.7); backdrop-filter: blur(20px); }
+[data-theme='dark'] .table-panel { background: rgba(20,20,31,0.95); }
 
 /* ---- Employee Table Overrides ---- */
 :deep(.emp-row) { transition: background 0.15s ease; }
@@ -412,7 +423,7 @@ onMounted(fetchEmployees)
    ============================================================ */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center;
-  padding: 24px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+  padding: 24px; background: rgba(0,0,0,0.75);
   opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
 }
 .modal-overlay.show { opacity: 1; pointer-events: auto; }
@@ -423,7 +434,7 @@ onMounted(fetchEmployees)
   box-shadow: 0 0 100px rgba(232,168,80,0.08), 0 24px 64px rgba(0,0,0,0.5);
   transform: scale(0.95) translateY(12px); transition: transform 0.3s ease;
 }
-[data-theme='dark'] .modal-panel { background: rgba(20,20,31,0.92); backdrop-filter: blur(20px); }
+[data-theme='dark'] .modal-panel { background: rgba(20,20,31,0.98); }
 .modal-panel.show { transform: scale(1) translateY(0); }
 
 .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 24px 24px 0; }

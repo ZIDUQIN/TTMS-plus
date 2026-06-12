@@ -25,7 +25,7 @@ public interface AuthService {
      *
      * @param request 注册请求（用户名、密码、手机号等信息）
      */
-    void register(RegisterRequest request);
+    Long register(RegisterRequest request);
 
     /**
      * 修改密码

@@ -187,8 +187,8 @@ onUnmounted(stopHeroTimer)
 .home-page { min-height: 100vh; background: var(--bg-primary); }
 
 /* Nav */
-.home-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 50; background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0,0,0,0.06); }
-[data-theme='dark'] .home-nav { background: rgba(20,20,35,0.7); backdrop-filter: blur(20px); border-bottom-color: rgba(255,255,255,0.05); }
+.home-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 50; background: rgba(255,255,255,0.92); border-bottom: 1px solid rgba(0,0,0,0.06); }
+[data-theme='dark'] .home-nav { background: rgba(20,20,35,0.92); border-bottom-color: rgba(255,255,255,0.05); }
 .home-nav__inner { max-width: 1280px; margin: 0 auto; padding: 0 32px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
 .home-nav__brand { font-family: Georgia,'Noto Serif SC',serif; font-size: 22px; font-weight: 700; color: var(--color-primary); }
 .home-nav__links { display: flex; gap: 24px; }
@@ -221,7 +221,7 @@ onUnmounted(stopHeroTimer)
 .hero-btn--book { background: var(--color-primary); color: #fff; }
 .hero-btn--book:hover { filter: brightness(1.1); }
 .hero-btn .material-symbols-outlined { font-size: 18px; }
-.hero__arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px); }
+.hero__arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.45); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
 .hero__arrow:hover { background: rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.4); }
 .hero__arrow--left { left: 20px; }
 .hero__arrow--right { right: 20px; }

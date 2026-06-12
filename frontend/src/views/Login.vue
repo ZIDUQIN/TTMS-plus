@@ -244,7 +244,7 @@ async function handleLogin() {
     rgba(232, 168, 80, 0.02) 80%,
     transparent 100%
   );
-  filter: blur(20px);
+  filter: blur(4px);
   animation: beamFlicker 8s ease-in-out infinite;
 }
 

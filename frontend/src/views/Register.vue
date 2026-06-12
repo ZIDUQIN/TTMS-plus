@@ -321,7 +321,7 @@ async function handleRegister() {
   width: 600px;
   height: 600px;
   border-radius: 50%;
-  filter: blur(120px);
+  opacity: 0.4;
 }
 
 .ambient-orb--gold {
@@ -354,9 +354,7 @@ async function handleRegister() {
 
 /* Subtle glass effect in dark mode */
 [data-theme='dark'] .register-panel {
-  background: rgba(20, 20, 31, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(20, 20, 31, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 

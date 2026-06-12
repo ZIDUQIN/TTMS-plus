@@ -107,12 +107,18 @@
             <h4 class="pr-section-title">卖品加购</h4>
           </div>
           <div class="pr-snacks">
-            <div v-for="sn in snacks" :key="sn.id" class="pr-snack-card" @click="addSnack(sn)">
+            <div v-for="sn in snacks" :key="sn.id" class="pr-snack-card"
+              :class="{ picked: pickedSnacks.find(x => x.id === sn.id) }"
+              @click="addSnack(sn)">
               <div class="pr-snack-icon">
                 <el-icon :size="24"><GobletSquare /></el-icon>
               </div>
               <span>{{ sn.name }}</span>
               <span class="pr-snack-price">¥{{ sn.price }}</span>
+              <div v-if="pickedSnacks.find(x => x.id === sn.id)" class="pr-snack-ctrls">
+                <button class="pr-snack-del" @click.stop="decSnack(sn)">−</button>
+                <span class="pr-snack-qty">x{{ pickedSnacks.find(x => x.id === sn.id).qty }}</span>
+              </div>
             </div>
             <div v-if="snacks.length === 0" class="pr-empty">暂无可选卖品</div>
           </div>
@@ -166,7 +172,7 @@ import { Search, Check, CircleCheckFilled, VideoCameraFilled, GobletSquare, Sell
 const movies = ref([]); const schedules = ref([]); const snacks = ref([])
 const selectedMovie = ref(null); const selectedSchedule = ref(null)
 const seats = ref([]); const seatsLoading = ref(false)
-const pickSeats = ref([]); const pickedSnacks = ref([])
+const pickSeats = ref([]); const pickedSnacks = ref([]) // [{id, name, price, qty}]
 const payMethod = ref('CASH'); const submitting = ref(false)
 const searchText = ref('')
 
@@ -197,7 +203,7 @@ const seatRows = computed(() => {
 
 const unitPrice = computed(() => parseFloat(selectedSchedule.value?.price) || parseFloat(selectedMovie.value?.price) || 0)
 const totalPrice = computed(() => selectedSchedule.value ? (unitPrice.value * pickSeats.value.length).toFixed(2) : '0.00')
-const snackTotal = computed(() => pickedSnacks.value.reduce((s, sn) => s + parseFloat(sn.price || 0), 0).toFixed(2))
+const snackTotal = computed(() => pickedSnacks.value.reduce((s, sn) => s + parseFloat(sn.price || 0) * (sn.qty || 1), 0).toFixed(2))
 const finalTotal = computed(() => (parseFloat(totalPrice.value) + parseFloat(snackTotal.value)).toFixed(2))
 const canSubmit = computed(() => selectedSchedule.value && pickSeats.value.length > 0)
 
@@ -247,10 +253,23 @@ function toggleSeat(seat) {
 function deselectSeat(s) { pickSeats.value = pickSeats.value.filter(x => x !== s) }
 function addSnack(sn) {
   const idx = pickedSnacks.value.findIndex(x => x.id === sn.id)
-  if (idx >= 0) pickedSnacks.value.splice(idx, 1)
-  else pickedSnacks.value.push(sn)
+  if (idx >= 0) {
+    pickedSnacks.value[idx].qty = (pickedSnacks.value[idx].qty || 1) + 1
+  } else {
+    pickedSnacks.value.push({ id: sn.id, name: sn.name, price: sn.price, qty: 1 })
+  }
+}
+function decSnack(sn) {
+  const idx = pickedSnacks.value.findIndex(x => x.id === sn.id)
+  if (idx < 0) return
+  if (pickedSnacks.value[idx].qty > 1) {
+    pickedSnacks.value[idx].qty--
+  } else {
+    pickedSnacks.value.splice(idx, 1)
+  }
 }
 function resetAll() { selectedMovie.value = null; selectedSchedule.value = null; pickSeats.value = []; pickedSnacks.value = [] }
+function removeSnack(snId) { pickedSnacks.value = pickedSnacks.value.filter(x => x.id !== snId) }
 
 async function submitOrder() {
   if (!canSubmit.value || submitting.value) return
@@ -300,7 +319,7 @@ onMounted(() => { fetchMovies(); fetchSnacks(); fetchAllSchedules() })
 /* Center */
 .pos-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0A0A10; position: relative; min-width: 0; }
 .pc-screen-area { width: 60%; max-width: 500px; text-align: center; margin-bottom: 30px; }
-.pc-screen-glow { height: 30px; background: linear-gradient(to bottom, rgba(232,168,80,0.2), transparent); border-radius: 50%; filter: blur(12px); }
+.pc-screen-glow { height: 30px; background: linear-gradient(to bottom, rgba(232,168,80,0.2), transparent); border-radius: 50%; filter: blur(4px); }
 .pc-screen-line { height: 2px; background: linear-gradient(90deg, transparent, var(--color-primary), transparent); border-radius: 1px; box-shadow: 0 2px 12px rgba(232,168,80,0.4); margin-top: -10px; }
 .pc-screen-label { margin-top: 10px; font-size: 10px; color: rgba(255,255,255,0.3); letter-spacing: 6px; }
 
@@ -346,6 +365,12 @@ onMounted(() => { fetchMovies(); fetchSnacks(); fetchAllSchedules() })
 .pr-snack-card:hover { border-color: rgba(232,168,80,0.3); }
 .pr-snack-icon { margin-bottom: 4px; color: rgba(232,168,80,0.3); }
 .pr-snack-price { display: block; color: var(--color-primary); font-weight: 600; margin-top: 3px; }
+.pr-snack-card.picked { border-color: var(--color-primary); background: rgba(232,168,80,0.08); position: relative; }
+.pr-snack-card.picked::after { content: '✓'; position: absolute; top: 6px; right: 8px; font-size: 12px; font-weight: 700; color: var(--color-primary); }
+.pr-snack-ctrls { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 6px; }
+.pr-snack-del { width: 22px; height: 22px; border: none; border-radius: 50%; background: rgba(232,64,64,0.15); color: var(--color-danger); font-size: 16px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0; transition: all 0.15s; flex-shrink: 0; }
+.pr-snack-del:hover { background: var(--color-danger); color: #fff; }
+.pr-snack-qty { font-size: 13px; font-weight: 700; color: var(--color-primary); }
 
 .pr-payments { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .pr-pay-btn { display: flex; align-items: center; gap: 6px; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: #1b1b20; color: var(--text-secondary); font-size: 12px; cursor: pointer; transition: all 0.15s; }
@@ -364,7 +389,7 @@ onMounted(() => { fetchMovies(); fetchSnacks(); fetchAllSchedules() })
 
 .pr-empty { padding: 16px; text-align: center; font-size: 12px; color: var(--text-tertiary); font-style: italic; }
 
-.pos-float-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(20,20,31,0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 8px 16px; display: flex; gap: 8px; z-index: 100; }
+.pos-float-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(20,20,31,0.98); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 8px 16px; display: flex; gap: 8px; z-index: 100; }
 .pos-float-bar button { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 12px; border: none; background: transparent; color: var(--text-secondary); font-size: 11px; cursor: pointer; transition: all 0.15s; }
 .pos-float-bar button:hover { color: var(--color-primary); background: rgba(128,128,128,0.08); }
 
@@ -390,6 +415,7 @@ onMounted(() => { fetchMovies(); fetchSnacks(); fetchAllSchedules() })
 [data-theme='light'] .pc-lg-box.available { border-color: rgba(0,0,0,0.15); background: #fff; }
 [data-theme='light'] .pc-lg-box.sold { background: #e4d8ce; }
 [data-theme='light'] .pr-order-card { background: #fff; }
+[data-theme='light'] .pr-snack-card.picked { background: rgba(132,84,0,0.05); }
 [data-theme='light'] .pr-snack-card { background: #fff; }
 [data-theme='light'] .pr-pay-btn { background: #fff; border-color: rgba(0,0,0,0.08); }
 [data-theme='light'] .pr-totals { background: #fff; }

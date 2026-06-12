@@ -369,7 +369,7 @@ onMounted(() => { fetchMembership(); fetchOrderCount() })
   height: 128px;
   background: rgba(232, 168, 80, 0.06);
   border-radius: 50%;
-  filter: blur(48px);
+  filter: blur(8px);
 }
 
 .profile-card__avatar-wrap {
@@ -383,7 +383,7 @@ onMounted(() => { fetchMembership(); fetchOrderCount() })
   inset: -8px;
   background: rgba(232, 168, 80, 0.15);
   border-radius: 50%;
-  filter: blur(16px);
+  filter: blur(4px);
 }
 
 .profile-card__avatar {

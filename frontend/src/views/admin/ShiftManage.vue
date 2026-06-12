@@ -308,7 +308,7 @@ onUnmounted(stopTimer)
   background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-xl);
   padding: 22px 24px; display: flex; align-items: center; gap: 16px; position: relative; overflow: hidden;
 }
-[data-theme='dark'] .glass-card { background: rgba(20,20,35,0.7); backdrop-filter: blur(20px); border-color: rgba(255,255,255,0.05); }
+[data-theme=.dark.] .glass-card { background: rgba(20,20,35,0.95); border-color: rgba(255,255,255,0.05); }
 .glass-card__watermark { position: absolute; right: -10px; bottom: -10px; opacity: 0.04; transition: transform 0.5s; }
 .glass-card:hover .glass-card__watermark { transform: scale(1.1); }
 .glass-card__watermark .material-symbols-outlined { font-size: 100px; }
@@ -332,7 +332,7 @@ onUnmounted(stopTimer)
 
 /* Settlement */
 .settlement-panel { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: var(--radius-xl); overflow: hidden; margin-bottom: 24px; }
-[data-theme='dark'] .settlement-panel { background: rgba(20,20,35,0.7); backdrop-filter: blur(20px); border-color: rgba(255,255,255,0.05); }
+[data-theme=.dark.] .settlement-panel { background: rgba(20,20,35,0.95); border-color: rgba(255,255,255,0.05); }
 .settlement-panel__header { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; border-bottom: 1px solid var(--border-light); background: rgba(128,128,128,0.03); }
 .settlement-panel__header h3 { font-size: 18px; font-weight: 600; color: var(--text-primary); }
 .settlement-panel__header h3 span { font-weight: 400; color: var(--text-tertiary); font-size: 13px; margin-left: 8px; }

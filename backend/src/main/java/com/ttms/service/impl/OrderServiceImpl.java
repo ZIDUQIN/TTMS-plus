@@ -821,6 +821,82 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
+     * 协助退票（管理端替用户退票）
+     * 与普通退票流程相同，但跳过用户所有权校验，使用操作员工ID记录日志
+     *
+     * @param orderId    订单ID
+     * @param operatorId 操作员工ID
+     * @return 退票后的订单
+     */
+    @Override
+    @Transactional
+    public Order assistRefund(Long orderId, Long operatorId) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BusinessException("订单不存在");
+        }
+        // 状态校验：只有待观影状态的订单才能退票
+        if (order.getStatus() != 1) {
+            if (order.getStatus() == 3) {
+                throw new BusinessException("该订单已改签，无法退票");
+            } else if (order.getStatus() == 4) {
+                throw new BusinessException("该订单已退票，请勿重复操作");
+            } else if (order.getStatus() == 0) {
+                throw new BusinessException("该订单尚未支付，无需退票");
+            }
+            throw new BusinessException("订单状态异常，无法退票");
+        }
+
+        // 验证场次是否已开始
+        Schedule schedule = scheduleMapper.selectById(order.getScheduleId());
+        if (schedule != null && schedule.getStartTime() != null
+            && schedule.getStartTime().isBefore(LocalDateTime.now())) {
+            throw new BusinessException("场次已开始放映，无法退票");
+        }
+
+        // 计算退票手续费
+        BigDecimal refundFee = calculateRefundFee(schedule, order.getTotalPrice());
+        BigDecimal refundAmount = order.getTotalPrice() != null
+            ? order.getTotalPrice().subtract(refundFee) : BigDecimal.ZERO;
+
+        // 释放座位
+        seatMapper.releaseSeatsByOrderId(order.getId());
+
+        // 原子减少场次已售数量
+        if (schedule != null) {
+            int sc = order.getSeatCount() != null ? order.getSeatCount() : order.getSeatNumbers() != null
+                ? order.getSeatNumbers().split(",").length : 0;
+            scheduleMapper.decrementSoldCount(schedule.getId(), sc);
+        }
+
+        // 更新订单状态
+        String feeInfo = refundFee.compareTo(BigDecimal.ZERO) > 0
+            ? "，手续费: ¥" + refundFee + "，实际退款: ¥" + refundAmount
+            : "";
+        String orderInfo = "订单号: " + order.getOrderNo() + ", 场次: " + order.getScheduleId()
+            + ", 座位: " + order.getSeatNumbers() + ", 金额: " + order.getTotalPrice() + feeInfo;
+        order.setStatus(4);  // 已退票
+        order.setRescheduleTime(LocalDateTime.now());  // 记录退票操作时间
+        orderMapper.updateById(order);
+
+        // 记录操作日志
+        OrderLog logEntry = new OrderLog();
+        logEntry.setOrderId(order.getId());
+        logEntry.setOperationType("REFUND");
+        logEntry.setBeforeContent(orderInfo);
+        logEntry.setAfterContent("管理员协助退票, 退款金额: " + refundAmount);
+        logEntry.setOperatorId(operatorId);
+        logEntry.setOperatorType("EMPLOYEE");
+        logEntry.setRemark("管理员(" + operatorId + ")协助退票" + feeInfo);
+        orderLogMapper.insert(logEntry);
+
+        log.info("管理员协助退票成功: orderNo={}, 操作员={}, 退款金额={}",
+            order.getOrderNo(), operatorId, refundAmount);
+
+        return fillOrderInfo(order);
+    }
+
+    /**
      * 生成唯一订单号
      * 格式: yyyyMMdd + 8位随机字母数字字符
      *

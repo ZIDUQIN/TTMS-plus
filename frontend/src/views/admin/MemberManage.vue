@@ -7,7 +7,7 @@
           <h2 class="page-hero__title">会员管理中心</h2>
           <p class="page-hero__desc">管理会员等级体系、追踪用户消费行为，优化会员运营策略。</p>
         </div>
-        <button class="golden-btn" @click="activeTab = 'users'; openSetLevel({})">
+        <button class="golden-btn" @click="openAddMember">
           <span class="material-symbols-outlined">person_add</span>
           <span>新增会员</span>
         </button>
@@ -277,6 +277,33 @@
         </template>
       </el-dialog>
 
+      <!-- Add Member Dialog -->
+      <el-dialog v-model="showAddMember" title="新增会员" width="440px" :close-on-click-modal="false">
+        <el-form ref="addMemberFormRef" :model="addMemberForm" :rules="addMemberRules" label-width="80px">
+          <el-form-item label="用户名" prop="username">
+            <el-input v-model="addMemberForm.username" placeholder="登录用户名" />
+          </el-form-item>
+          <el-form-item label="密码" prop="password">
+            <el-input v-model="addMemberForm.password" placeholder="默认密码123456" show-password />
+          </el-form-item>
+          <el-form-item label="姓名" prop="realName">
+            <el-input v-model="addMemberForm.realName" placeholder="真实姓名" />
+          </el-form-item>
+          <el-form-item label="手机号" prop="phone">
+            <el-input v-model="addMemberForm.phone" placeholder="手机号码" />
+          </el-form-item>
+          <el-form-item label="会员等级">
+            <el-select v-model="addMemberForm.memberLevelId" placeholder="可选初始等级" style="width:100%" clearable>
+              <el-option v-for="l in levels" :key="l.id" :label="l.levelName" :value="l.id" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="showAddMember = false">取消</el-button>
+          <el-button type="primary" :loading="addMemberLoading" @click="handleAddMember">确认创建</el-button>
+        </template>
+      </el-dialog>
+
       <!-- Adjust Points Dialog -->
       <el-dialog v-model="showAdjustPoints" title="调整积分" width="360px">
         <div style="margin-bottom:12px;color:var(--text-secondary);font-size:13px">
@@ -301,6 +328,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { getMemberLevels, addMemberLevel, updateMemberLevel, deleteMemberLevel, getMemberUsers, setUserLevel, adjustUserPoints, deleteUser } from '@/api/member'
+import { register } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { UserFilled } from '@element-plus/icons-vue'
 
@@ -321,9 +349,17 @@ const levelRules = {
 // Member users
 const memberUsers = ref([]); const usersLoading = ref(false)
 const usersPage = ref(1); const usersTotal = ref(0)
-const showSetLevel = ref(false); const showAdjustPoints = ref(false)
+const showSetLevel = ref(false); const showAdjustPoints = ref(false); const showAddMember = ref(false)
 const selectedUser = ref(null); const selectedLevelId = ref(null)
-const pointsDelta = ref(0); const setLevelLoading = ref(false); const adjustLoading = ref(false)
+const pointsDelta = ref(0); const setLevelLoading = ref(false); const adjustLoading = ref(false); const addMemberLoading = ref(false)
+const addMemberFormRef = ref(null)
+const addMemberForm = reactive({ username: '', password: '123456', realName: '', phone: '', memberLevelId: null })
+const addMemberRules = {
+  username: [{ required: true, message: '请输入用户名' }, { min: 3, max: 20, message: '用户名长度3-20位' }],
+  password: [{ required: true, message: '请输入密码' }, { min: 6, message: '密码至少6位' }],
+  realName: [{ required: true, message: '请输入姓名' }],
+  phone: [{ pattern: /^1[3-9]\d{9}$/, message: '请输入有效手机号' }]
+}
 
 const levelFilterOptions = [
   { label: '全部', value: '' },
@@ -450,6 +486,36 @@ async function handleAdjustPoints() {
 }
 
 async function handleDeleteUser(user) { try { await deleteUser(user.id); ElMessage.success('已删除'); fetchUsers() } catch {} }
+
+function openAddMember() {
+  addMemberForm.username = ''; addMemberForm.password = '123456'
+  addMemberForm.realName = ''; addMemberForm.phone = ''; addMemberForm.memberLevelId = null
+  addMemberFormRef.value?.resetFields()
+  showAddMember.value = true
+}
+
+async function handleAddMember() {
+  if (!addMemberFormRef.value) return
+  const valid = await addMemberFormRef.value.validate().catch(() => false); if (!valid) return
+  addMemberLoading.value = true
+  try {
+    const res = await register({
+      username: addMemberForm.username,
+      password: addMemberForm.password,
+      realName: addMemberForm.realName,
+      phone: addMemberForm.phone,
+      nickname: addMemberForm.realName
+    })
+    const userId = res.data?.userId
+    // 如果选了初始等级，直接为新用户设置
+    if (userId && addMemberForm.memberLevelId) {
+      try { await setUserLevel(userId, addMemberForm.memberLevelId) } catch {}
+    }
+    ElMessage.success('会员创建成功')
+    showAddMember.value = false
+    fetchUsers()
+  } catch {} finally { addMemberLoading.value = false }
+}
 
 onMounted(() => { fetchLevels(); fetchUsers() })
 </script>

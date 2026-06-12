@@ -229,7 +229,7 @@ onMounted(loadAll)
   background: var(--bg-card); border: 1px solid var(--border-light); cursor: pointer;
   transition: all 0.4s ease;
 }
-[data-theme='dark'] .coupon-card { background: rgba(20,20,31,0.6); backdrop-filter: blur(12px); border-color: rgba(255,255,255,0.05); }
+[data-theme=.dark.] .coupon-card { background: rgba(20,20,31,0.8); border-color: rgba(255,255,255,0.05); }
 .coupon-card:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.3); }
 .coupon-card:hover .arrow-icon { transform: translateX(4px); }
 
@@ -240,7 +240,7 @@ onMounted(loadAll)
 .coupon-left { width: 35%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; flex-shrink: 0; }
 .coupon-left.gold { background: linear-gradient(135deg, #e8a850 0%, #a6732e 100%); color: #2a1800; }
 .coupon-left.velvet { background: linear-gradient(135deg, #89182a 0%, #40000b 100%); color: #ffc0c1; }
-.coupon-left__glow { position: absolute; top: -30px; left: -30px; width: 80px; height: 80px; background: rgba(255,255,255,0.08); border-radius: 50%; filter: blur(20px); }
+.coupon-left__glow { position: absolute; top: -30px; left: -30px; width: 80px; height: 80px; background: rgba(255,255,255,0.08); border-radius: 50%; }
 .coupon-left__tag { font-family: 'JetBrains Mono',monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; opacity: 0.8; margin-bottom: 2px; }
 .coupon-left__val { font-size: 44px; font-weight: 800; line-height: 1; display: flex; align-items: baseline; }
 .coupon-left__val .sym { font-size: 18px; font-weight: 700; margin-right: 2px; }

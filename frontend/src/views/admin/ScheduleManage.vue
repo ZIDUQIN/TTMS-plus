@@ -19,14 +19,23 @@
       <!-- Date Selector Strip -->
       <div class="date-strip-wrap">
         <div class="date-strip-label">放映日历</div>
-        <div class="date-strip" ref="dateStripRef">
-          <div v-for="d in dateOptions" :key="d.value"
-            class="date-card" :class="{ active: selectedDate === d.value }"
-            @click="selectedDate = d.value">
-            <span class="date-weekday">{{ d.weekday }}</span>
-            <span class="date-day">{{ d.day }}</span>
-            <span v-if="selectedDate === d.value" class="date-dot"></span>
+        <div class="date-strip-row">
+          <button class="date-nav-btn" @click="dateOffset -= 7" :disabled="dateOffset <= -7">
+            <el-icon :size="16"><ArrowLeft /></el-icon>
+          </button>
+          <div class="date-strip" ref="dateStripRef">
+            <div v-for="d in dateOptions" :key="d.value"
+              class="date-card" :class="{ active: selectedDate === d.value, today: d.isToday }"
+              @click="selectedDate = d.value">
+              <span class="date-weekday">{{ d.weekday }}</span>
+              <span class="date-day">{{ d.day }}</span>
+              <span v-if="d.isToday" class="date-today-tag">今天</span>
+              <span v-if="selectedDate === d.value" class="date-dot"></span>
+            </div>
           </div>
+          <button class="date-nav-btn" @click="dateOffset += 7">
+            <el-icon :size="16"><ArrowRight /></el-icon>
+          </button>
         </div>
       </div>
 
@@ -261,14 +270,14 @@ import { ref, computed, onMounted, reactive } from 'vue'
 import { getScheduleList, addSchedule, updateSchedule, deleteSchedule, getHallList, batchAddSchedule, batchDeleteSchedules } from '@/api/order'
 import { getMovieList } from '@/api/movie'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Clock, VideoCameraFilled, WarningFilled, InfoFilled, CircleCheckFilled, CircleClose, Calendar, Refresh, Lightning, Close } from '@element-plus/icons-vue'
+import { Plus, Clock, VideoCameraFilled, WarningFilled, InfoFilled, CircleCheckFilled, CircleClose, Calendar, Refresh, Lightning, Close, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 
 // Data
 const schedules = ref([]); const movies = ref([]); const halls = ref([])
 const loading = ref(false); const dialogVisible = ref(false); const isEdit = ref(false)
 const editingId = ref(null); const submitting = ref(false); const formRef = ref(null)
 const currentPage = ref(1); const pageSize = ref(20); const total = ref(0)
-const selectedIds = ref([]); const selectedDate = ref('')
+const selectedIds = ref([]); const selectedDate = ref(''); const dateOffset = ref(0)
 
 // New form state for Stitch design
 const startDateOnly = ref(''); const startTimeOnly = ref(''); const recurrence = ref('none')
@@ -294,10 +303,18 @@ const batchRules = {
 }
 
 // Computed
+const filteredSchedules = computed(() => {
+  if (!selectedDate.value) return schedules.value
+  return schedules.value.filter(s => {
+    if (!s.startTime) return false
+    return (typeof s.startTime === 'string' ? s.startTime : String(s.startTime)).startsWith(selectedDate.value)
+  })
+})
+
 const hallSchedules = computed(() => {
   const map = {}
   halls.value.forEach(h => { map[h.id] = { id: h.id, name: h.name, type: h.type, schedules: [] } })
-  schedules.value.forEach(s => {
+  filteredSchedules.value.forEach(s => {
     const hid = s.hallId
     if (!map[hid]) map[hid] = { id: hid, name: s.hallName || '影厅 ' + hid, type: '', schedules: [] }
     map[hid].schedules.push(s)
@@ -305,10 +322,10 @@ const hallSchedules = computed(() => {
   return Object.values(map)
 })
 
-const totalCount = computed(() => schedules.value.length)
+const totalCount = computed(() => filteredSchedules.value.length)
 const avgOccupancy = computed(() => {
-  if (schedules.value.length === 0) return 0
-  const total = schedules.value.reduce((sum, s) => {
+  if (filteredSchedules.value.length === 0) return 0
+  const total = filteredSchedules.value.reduce((sum, s) => {
     const sold = s.soldCount || 0; const total = s.totalSeats || 240
     return sum + (total > 0 ? (sold / total) * 100 : 0)
   }, 0)
@@ -330,10 +347,14 @@ const dateOptions = computed(() => {
   const options = []
   const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
   const today = new Date()
-  for (let i = -3; i <= 10; i++) {
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`
+  const start = dateOffset.value
+  const end = start + 13 // 一次显示14天
+  for (let i = start; i <= end; i++) {
     const d = new Date(today); d.setDate(d.getDate() + i)
     const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, '0'); const day = String(d.getDate()).padStart(2, '0')
-    options.push({ value: `${y}-${m}-${day}`, weekday: weekdays[d.getDay()], day: d.getDate() })
+    const value = `${y}-${m}-${day}`
+    options.push({ value, weekday: weekdays[d.getDay()], day: d.getDate(), isToday: value === todayStr })
   }
   return options
 })
@@ -447,7 +468,7 @@ async function fetchAll() {
   loading.value = false
 }
 
-onMounted(() => { selectedDate.value = dateOptions.value[3]?.value || ''; fetchAll() })
+onMounted(() => { dateOffset.value = -3; selectedDate.value = dateOptions.value[3]?.value || ''; fetchAll() })
 </script>
 
 <style scoped>
@@ -463,14 +484,24 @@ onMounted(() => { selectedDate.value = dateOptions.value[3]?.value || ''; fetchA
 /* Date Strip */
 .date-strip-wrap { margin-bottom: 36px; }
 .date-strip-label { font-size: 12px; font-weight: 600; color: var(--color-primary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
-.date-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
+.date-strip-row { display: flex; align-items: center; gap: 8px; }
+.date-nav-btn {
+  width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card);
+  color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all 0.15s;
+}
+.date-nav-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.date-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.date-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; flex: 1; }
 .date-strip::-webkit-scrollbar { height: 0; }
-.date-card { flex: 0 0 80px; padding: 12px 4px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: all 0.2s; background: var(--bg-card); }
+.date-card { flex: 0 0 80px; padding: 12px 4px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: all 0.2s; background: var(--bg-card); position: relative; }
 .date-card:hover { border-color: var(--color-primary); }
 .date-card.active { border-color: var(--color-primary); background: rgba(232,168,80,0.08); color: var(--color-primary); }
+.date-card.today { border-color: var(--color-primary); border-width: 2px; }
 .date-weekday { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; }
 .date-card.active .date-weekday { color: var(--color-primary); }
 .date-day { font-size: 22px; font-weight: 700; }
+.date-today-tag { font-size: 9px; font-weight: 700; color: #fff; background: var(--color-primary); border-radius: 6px; padding: 1px 6px; position: absolute; top: -6px; }
 .date-dot { width: 4px; height: 4px; background: var(--color-primary); border-radius: 50%; margin-top: 4px; }
 
 /* Hall Sections */
@@ -520,7 +551,7 @@ onMounted(() => { selectedDate.value = dateOptions.value[3]?.value || ''; fetchA
 /* === Dark Mode Split Modal === */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center;
-  padding: 24px; background: rgba(0,0,0,0.55); backdrop-filter: blur(6px);
+  padding: 24px; background: rgba(0,0,0,0.75);
   animation: fadeIn 0.2s ease;
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

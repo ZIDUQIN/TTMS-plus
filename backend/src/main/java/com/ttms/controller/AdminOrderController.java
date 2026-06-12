@@ -111,6 +111,22 @@ public class AdminOrderController {
     }
 
     /**
+     * 协助退票（管理端替用户退票）
+     * POST /api/admin/orders/assist-refund/{orderId}
+     *
+     * @param orderId 订单ID
+     * @return 退票后的订单
+     */
+    @PostMapping("/assist-refund/{orderId}")
+    public ApiResponse<Order> assistRefund(@PathVariable Long orderId) {
+        Long operatorId = getCurrentUserId();
+        log.info("管理端协助退票: operatorId={}, orderId={}", operatorId, orderId);
+        Order order = orderService.assistRefund(orderId, operatorId);
+        log.info("协助退票成功: orderNo={}", order.getOrderNo());
+        return ApiResponse.success("退票成功", order);
+    }
+
+    /**
      * 获取当前登录员工/管理员的ID
      *
      * @return 当前操作员ID

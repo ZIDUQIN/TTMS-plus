@@ -1,6 +1,7 @@
 package com.ttms.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ttms.dto.ApiResponse;
 import com.ttms.entity.Employee;
@@ -134,38 +135,46 @@ public class EmployeeController {
      */
     @PutMapping("/update")
     public ApiResponse<Employee> update(@RequestBody Employee employee) {
-        log.info("更新员工: id={}, username={}", employee.getId(), employee.getUsername());
+        log.info("更新员工: id={}, roleCode={}", employee.getId(), employee.getRoleCode());
 
         Employee existing = employeeMapper.selectById(employee.getId());
         if (existing == null) {
             throw new BusinessException("员工不存在");
         }
 
-        // 处理角色：支持 roleCode 或 roleId
+        // 用 LambdaUpdateWrapper 精确控制更新的字段，避免 updateById 误改其他列
+        LambdaUpdateWrapper<Employee> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(Employee::getId, employee.getId());
+
+        if (employee.getRealName() != null && !employee.getRealName().isBlank()) {
+            wrapper.set(Employee::getRealName, employee.getRealName());
+        }
+        if (employee.getPhone() != null) {
+            wrapper.set(Employee::getPhone, employee.getPhone());
+        }
+
+        // 处理角色更新：前端传 roleCode，后端转为 roleId
         if (employee.getRoleCode() != null && !employee.getRoleCode().isBlank()) {
             Role role = roleMapper.findByRoleCode(employee.getRoleCode());
             if (role == null) {
                 throw new BusinessException("指定的角色不存在: " + employee.getRoleCode());
             }
-            employee.setRoleId(role.getId());
-            employee.setRoleName(role.getRoleName());
-        } else if (employee.getRoleId() != null && !employee.getRoleId().equals(existing.getRoleId())) {
-            Role role = roleMapper.selectById(employee.getRoleId());
-            if (role == null) {
-                throw new BusinessException("指定的角色不存在");
+            wrapper.set(Employee::getRoleId, role.getId());
+        }
+
+        employeeMapper.update(null, wrapper);
+        log.info("员工更新成功: id={}", employee.getId());
+
+        // 重新查询返回完整信息（含角色名）
+        Employee updated = employeeMapper.selectById(employee.getId());
+        if (updated != null && updated.getRoleId() != null) {
+            Role role = roleMapper.selectById(updated.getRoleId());
+            if (role != null) {
+                updated.setRoleName(role.getRoleName());
+                updated.setRoleCode(role.getRoleCode());
             }
         }
-
-        // 禁止通过update接口修改密码（密码通过专门的reset-password接口重置）
-        // 无论前端传null还是空字符串，都强制置null让MyBatis-Plus跳过此字段
-        if (employee.getPassword() != null && !employee.getPassword().isBlank()) {
-            log.warn("检测到通过update接口尝试修改密码: id={}, 已拦截", employee.getId());
-        }
-        employee.setPassword(null);
-
-        employeeMapper.updateById(employee);
-        log.info("员工更新成功: id={}, username={}", employee.getId(), employee.getUsername());
-        return ApiResponse.success("员工信息更新成功", employeeMapper.selectById(employee.getId()));
+        return ApiResponse.success("员工信息更新成功", updated);
     }
 
     /**

@@ -62,19 +62,19 @@ const routes = [
     path: '/admin/movies',
     name: 'MovieManage',
     component: () => import('@/views/admin/MovieManage.vue'),
-    meta: { title: '影片管理', requiresAuth: true, requiresAdmin: true, role: 'ROLE_SUPER_ADMIN' }
+    meta: { title: '影片管理', requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/admin/halls',
     name: 'HallManage',
     component: () => import('@/views/admin/HallManage.vue'),
-    meta: { title: '影厅管理', requiresAuth: true, requiresAdmin: true, role: 'ROLE_SUPER_ADMIN' }
+    meta: { title: '影厅管理', requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/admin/schedules',
     name: 'ScheduleManage',
     component: () => import('@/views/admin/ScheduleManage.vue'),
-    meta: { title: '排片管理', requiresAuth: true, requiresAdmin: true, role: 'ROLE_SUPER_ADMIN' }
+    meta: { title: '排片管理', requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/admin/orders',
@@ -92,7 +92,7 @@ const routes = [
     path: '/admin/statistics',
     name: 'Statistics',
     component: () => import('@/views/admin/Statistics.vue'),
-    meta: { title: '数据统计', requiresAuth: true, requiresAdmin: true, role: 'ROLE_SUPER_ADMIN' }
+    meta: { title: '数据统计', requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/admin/employees',

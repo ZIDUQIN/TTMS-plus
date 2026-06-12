@@ -1,5 +1,6 @@
 package com.ttms.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.ttms.dto.ApiResponse;
 import com.ttms.entity.*;
 import com.ttms.mapper.*;
@@ -39,6 +40,21 @@ public class PosController {
     public ApiResponse<List<Map<String, Object>>> todaySchedules() {
         List<Schedule> schedules = scheduleMapper.selectUpcoming();
         List<Map<String, Object>> result = new ArrayList<>();
+
+        // 批量查询所有场次的可用座位数，避免 N+1
+        java.util.Set<Long> scheduleIds = schedules.stream()
+            .map(Schedule::getId).collect(java.util.stream.Collectors.toSet());
+        java.util.Map<Long, Integer> availableMap = new java.util.LinkedHashMap<>();
+        if (!scheduleIds.isEmpty()) {
+            List<Seat> allSeats = seatMapper.selectList(
+                new LambdaQueryWrapper<Seat>()
+                    .in(Seat::getScheduleId, scheduleIds)
+                    .eq(Seat::getStatus, 0)); // 只统计空闲座位
+            for (Seat seat : allSeats) {
+                availableMap.merge(seat.getScheduleId(), 1, Integer::sum);
+            }
+        }
+
         for (Schedule s : schedules) {
             if (s.getStartTime() != null
                 && s.getStartTime().toLocalDate().equals(java.time.LocalDate.now())) {
@@ -52,7 +68,15 @@ public class PosController {
                 item.put("startTime", s.getStartTime());
                 item.put("endTime", s.getEndTime());
                 item.put("price", s.getPrice());
-                item.put("availableSeats", s.getAvailableSeats());
+                // 优先使用seat表精确计数的空闲座位；若座位尚未生成则用影厅容量推算
+                int available = availableMap.getOrDefault(s.getId(), -1);
+                if (available < 0) {
+                    int total = (s.getHallRowCount() != null && s.getHallColCount() != null)
+                        ? s.getHallRowCount() * s.getHallColCount() : 0;
+                    int sold = s.getSoldCount() != null ? s.getSoldCount() : 0;
+                    available = Math.max(0, total - sold);
+                }
+                item.put("availableSeats", available);
                 result.add(item);
             }
         }

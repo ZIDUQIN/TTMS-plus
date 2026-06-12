@@ -56,11 +56,13 @@ public class AuthController {
      * @return 操作结果
      */
     @PostMapping("/register")
-    public ApiResponse<Void> register(@Valid @RequestBody RegisterRequest request) {
+    public ApiResponse<Map<String, Object>> register(@Valid @RequestBody RegisterRequest request) {
         log.info("注册请求: username={}", request.getUsername());
-        authService.register(request);
-        log.info("注册成功: username={}", request.getUsername());
-        return ApiResponse.success("注册成功，请登录");
+        Long userId = authService.register(request);
+        log.info("注册成功: username={}, userId={}", request.getUsername(), userId);
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("userId", userId);
+        return ApiResponse.success("注册成功", data);
     }
 
     /**
