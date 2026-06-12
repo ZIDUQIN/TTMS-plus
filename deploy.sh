@@ -39,57 +39,52 @@ fi
 
 SSH_OPTS="-o ConnectTimeout=10 -o StrictHostKeyChecking=no -p ${SSH_PORT}"
 
-# ---- 1. Maven 构建 ----
-log "Step 1/5: Maven 构建后端..."
+# ---- 1. 构建前端 ----
+log "Step 1/5: 构建前端..."
+cd frontend
+npm run build --silent 2>/dev/null || npm run build
+log "前端构建完成"
+cd ..
+
+# ---- 2. 将前端产物嵌入后端 static 目录 ----
+log "Step 2/5: 嵌入前端到后端 static..."
+rm -rf backend/src/main/resources/static/assets backend/src/main/resources/static/index.html
+cp -r frontend/dist/* backend/src/main/resources/static/
+
+# ---- 3. Maven 构建（前端已打包在内）----
+log "Step 3/5: Maven 构建后端 JAR..."
 cd backend
 mvn clean package -DskipTests -B -q || err "Maven 构建失败，请检查 JDK/Maven 版本"
 JAR_FILE=$(ls target/ttms-*.jar | head -1)
 log "构建完成: ${JAR_FILE}"
 cd ..
 
-# ---- 2. 构建前端 ----
-log "Step 2/5: 构建前端..."
-cd frontend
-npm run build --silent 2>/dev/null || npm run build
-log "前端构建完成"
-cd ..
-
-# ---- 3. 检查远程连接 ----
-log "Step 3/5: 连接 ECS ${SSH_USER}@${ECS_HOST}:${SSH_PORT}..."
+# ---- 4. 检查远程连接 ----
+log "Step 4/5: 连接 ECS ${SSH_USER}@${ECS_HOST}:${SSH_PORT}..."
 if ! ssh ${SSH_OPTS} "${SSH_USER}@${ECS_HOST}" "echo ok" &>/dev/null; then
     err "无法连接 ECS，请检查 IP / 用户名 / 端口"
 fi
 
-# ---- 4. 上传文件 ----
-log "Step 4/5: 上传部署文件..."
+# ---- 5. 上传 JAR 到 ECS ----
+log "Step 5/5: 上传文件..."
 
-# 在 ECS 上创建目录结构
+# 在 ECS 上停止旧进程
 ssh ${SSH_OPTS} "${SSH_USER}@${ECS_HOST}" "
     mkdir -p ${REMOTE_DIR}/{bin,config,logs,uploads}
-    # 如果已有旧版本在运行，先停止
     if [ -f ${REMOTE_DIR}/bin/app.pid ]; then
         PID=\$(cat ${REMOTE_DIR}/bin/app.pid)
         if kill -0 \$PID 2>/dev/null; then
             echo '停止旧进程 PID=\$PID'
-            kill \$PID
+            kill \$PID 2>/dev/null || true
             sleep 3
             kill -9 \$PID 2>/dev/null || true
         fi
     fi
 "
 
-# 上传 JAR
+# 上传 JAR（前端已打包在 JAR 内）
 log "  上传 JAR..."
 scp -P ${SSH_PORT} backend/target/ttms-*.jar "${SSH_USER}@${ECS_HOST}:${REMOTE_DIR}/bin/app.jar"
-
-# 上传前端产物到 static 目录（Spring Boot 直接serve）
-log "  上传前端..."
-ssh ${SSH_OPTS} "${SSH_USER}@${ECS_HOST}" "mkdir -p ${REMOTE_DIR}/bin/static"
-scp -P ${SSH_PORT} -r frontend/dist/* "${SSH_USER}@${ECS_HOST}:${REMOTE_DIR}/bin/static/"
-
-# 上传 SQL schema（首次部署用）
-log "  上传 schema.sql..."
-scp -P ${SSH_PORT} backend/src/main/resources/schema.sql "${SSH_USER}@${ECS_HOST}:${REMOTE_DIR}/config/"
 
 # ---- 5. 配置并启动 ----
 log "Step 5/5: 配置环境变量并启动..."
