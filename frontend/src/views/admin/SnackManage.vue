@@ -152,7 +152,7 @@
         <div class="snack-grid" v-if="combos.length > 0">
           <div v-for="combo in combos" :key="combo.id" class="snack-card">
             <div class="snack-card__img-wrap">
-              <img v-if="combo.imageUrl" :src="combo.imageUrl" :alt="combo.name" class="snack-card__img" />
+              <img v-if="combo.imageUrl" :src="combo.imageUrl" :alt="combo.name" class="snack-card__img" @error="e => e.target.style.display='none'" />
               <div v-else class="snack-card__img-placeholder">
                 <span class="material-symbols-outlined">package_2</span>
               </div>
@@ -230,8 +230,14 @@
             <el-form-item label="商品介绍">
               <el-input v-model="snackForm.description" type="textarea" :rows="3" placeholder="简短描述商品的特色内容..." />
             </el-form-item>
-            <el-form-item label="图片链接">
-              <el-input v-model="snackForm.imageUrl" placeholder="输入图片URL地址" />
+            <el-form-item label="商品图片">
+              <div style="display:flex;gap:8px;align-items:center">
+                <el-input v-model="snackForm.imageUrl" placeholder="输入URL或点击右侧上传" style="flex:1" />
+                <el-button :loading="uploadingImage" @click="handleImageUpload(snackForm)" type="warning" plain>
+                  <span class="material-symbols-outlined" style="font-size:16px">upload</span>
+                </el-button>
+              </div>
+              <img v-if="snackForm.imageUrl" :src="snackForm.imageUrl" style="width:100%;max-height:120px;object-fit:cover;margin-top:8px;border-radius:8px" @error="$event.target.style.display='none'" />
             </el-form-item>
           </el-form>
           <div class="modal-actions">
@@ -244,12 +250,76 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- ========== Add/Edit Combo Modal ========== -->
+    <Teleport to="body">
+      <div class="modal-overlay" :class="{ show: showComboDialog }" @click.self="showComboDialog = false">
+        <div class="modal-panel" :class="{ show: showComboDialog }">
+          <div class="modal-header">
+            <h2 class="modal-title">{{ editingCombo ? '编辑套餐' : '新建套餐' }}</h2>
+            <button class="modal-close" @click="showComboDialog = false">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <el-form ref="comboFormRef" :model="comboForm" label-position="top" class="modal-form">
+            <el-form-item label="套餐名称" prop="name" :rules="[{ required: true, message: '请输入套餐名称' }]">
+              <el-input v-model="comboForm.name" placeholder="如：双人观影套餐" />
+            </el-form-item>
+            <div class="form-row-2">
+              <el-form-item label="套餐售价 (¥)" prop="price" :rules="[{ required: true, message: '请输入售价' }]">
+                <el-input-number v-model="comboForm.price" :min="0" :precision="2" style="width:100%" />
+              </el-form-item>
+              <el-form-item label="原价合计 (¥)">
+                <el-input-number v-model="comboForm.originalPrice" :min="0" :precision="2" style="width:100%" />
+              </el-form-item>
+            </div>
+            <el-form-item label="包含单品（可多选）">
+              <div class="snack-check-grid">
+                <el-checkbox
+                  v-for="s in snacks"
+                  :key="s.id"
+                  :model-value="comboForm.snackIds.includes(s.id)"
+                  :label="s.id"
+                  @change="(checked) => { if (checked) comboForm.snackIds.push(s.id); else comboForm.snackIds = comboForm.snackIds.filter(id => id !== s.id) }"
+                >
+                  <span>{{ s.name }}</span>
+                  <span style="color:var(--color-primary);margin-left:4px;font-size:12px">¥{{ s.price }}</span>
+                </el-checkbox>
+              </div>
+              <div v-if="comboForm.snackIds.length > 0" style="margin-top:8px;font-size:12px;color:var(--text-secondary)">
+                已选 {{ comboForm.snackIds.length }} 个单品 · 单品原价合计 ¥{{ selectedSnacksTotal }}
+              </div>
+            </el-form-item>
+            <el-form-item label="套餐描述">
+              <el-input v-model="comboForm.description" type="textarea" :rows="2" placeholder="描述套餐特色..." />
+            </el-form-item>
+            <el-form-item label="套餐图片">
+              <div style="display:flex;gap:8px;align-items:center">
+                <el-input v-model="comboForm.imageUrl" placeholder="输入URL或点击右侧上传" style="flex:1" />
+                <el-button :loading="uploadingImage" @click="handleImageUpload(comboForm)" type="warning" plain>
+                  <span class="material-symbols-outlined" style="font-size:16px">upload</span>
+                </el-button>
+              </div>
+              <img v-if="comboForm.imageUrl" :src="comboForm.imageUrl" style="width:100%;max-height:120px;object-fit:cover;margin-top:8px;border-radius:8px" @error="e => e.target.style.display='none'" />
+            </el-form-item>
+          </el-form>
+          <div class="modal-actions">
+            <button class="btn-cancel" @click="showComboDialog = false">取消</button>
+            <button class="golden-btn" :disabled="comboSubmitting" @click="handleComboSubmit">
+              <span v-if="comboSubmitting">保存中...</span>
+              <span v-else>确认{{ editingCombo ? '更新' : '创建' }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getSnacks, addSnack, updateSnack, deleteSnack, getCombos, getSnackOrders } from '@/api/snack'
+import { getSnacks, addSnack, updateSnack, deleteSnack, getCombos, addCombo, updateCombo, deleteCombo, getSnackOrders } from '@/api/snack'
+import { uploadPoster } from '@/api/movie'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const activeTab = ref('snacks')
@@ -265,7 +335,14 @@ const editingSnack = ref(null)
 const snackSubmitting = ref(false)
 const snackFormRef = ref(null)
 
+// Combo dialog state
+const showComboDialog = ref(false)
+const editingCombo = ref(null)
+const comboSubmitting = ref(false)
+const comboFormRef = ref(null)
+
 const snackForm = ref({ name: '', category: 'POPCORN', price: 0, stock: 0, description: '', imageUrl: '' })
+const comboForm = ref({ name: '', price: 0, originalPrice: 0, description: '', imageUrl: '', snackIds: [] })
 const snackRules = {
   name: [{ required: true, message: '请输入名称' }],
   price: [{ required: true, message: '请输入价格' }],
@@ -294,6 +371,13 @@ const filteredSnacks = computed(() => {
 const inStockCount = computed(() => snacks.value.filter(s => s.stock === -1 || s.stock > 0).length)
 const outOfStockCount = computed(() => snacks.value.filter(s => s.stock !== -1 && s.stock <= 0).length)
 
+const selectedSnacksTotal = computed(() => {
+  return comboForm.value.snackIds.reduce((sum, id) => {
+    const s = snacks.value.find(x => x.id === id)
+    return sum + (s ? parseFloat(s.price || 0) : 0)
+  }, 0).toFixed(2)
+})
+
 function isOutOfStock(snack) { return snack.stock !== -1 && snack.stock !== null && snack.stock <= 0 }
 function isLowStock(snack) { return snack.stock !== -1 && snack.stock !== null && snack.stock < 10 && snack.stock > 0 }
 function categoryLabel(cat) { const m = { POPCORN: '爆米花', DRINK: '饮料', SNACK: '零食', COMBO: '套餐', OTHER: '其他' }; return m[cat] || cat }
@@ -312,7 +396,68 @@ function openSnackDialog(row) {
   showSnackDialog.value = true
 }
 
-function openComboDialog() { ElMessage.info('套餐功能请通过后端接口管理') }
+function openComboDialog(row) {
+  editingCombo.value = row || null
+  comboForm.value = row
+    ? {
+        name: row.name, price: row.price, originalPrice: row.originalPrice || 0,
+        description: row.description || '', imageUrl: row.imageUrl || '',
+        snackIds: parseSnackIdsStr(row.snackIds)
+      }
+    : { name: '', price: 0, originalPrice: 0, description: '', imageUrl: '', snackIds: [] }
+  showComboDialog.value = true
+}
+
+function parseSnackIdsStr(str) {
+  try { return JSON.parse(str) } catch { return [] }
+}
+
+const uploadingImage = ref(false)
+async function handleImageUpload(targetForm) {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.onchange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    uploadingImage.value = true
+    try {
+      const res = await uploadPoster(file)
+      const url = res?.data?.url || res?.url || ''
+      if (url) {
+        targetForm.imageUrl = url
+        ElMessage.success('图片上传成功')
+      }
+    } catch (err) {
+      ElMessage.error('图片上传失败')
+    }
+    uploadingImage.value = false
+  }
+  input.click()
+}
+
+async function handleComboSubmit() {
+  if (!comboFormRef.value) return
+  const v = await comboFormRef.value.validate().catch(() => false)
+  if (!v) return
+  comboSubmitting.value = true
+  try {
+    const payload = {
+      ...comboForm.value,
+      snackIds: JSON.stringify(comboForm.value.snackIds || [])
+    }
+    if (editingCombo.value) {
+      await updateCombo({ ...payload, id: editingCombo.value.id })
+    } else {
+      await addCombo(payload)
+    }
+    ElMessage.success(editingCombo.value ? '套餐已更新' : '套餐已创建')
+    showComboDialog.value = false
+    fetchCombos()
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '操作失败')
+  } finally { comboSubmitting.value = false }
+}
 
 async function handleSnackSubmit() {
   if (!snackFormRef.value) return
@@ -337,7 +482,7 @@ async function handleSnackDelete(id) {
 async function handleComboDelete(id) {
   try { await ElMessageBox.confirm('确定删除该套餐？', '确认删除', { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }) }
   catch { return }
-  try { await deleteSnack(id); ElMessage.success('已删除'); fetchCombos() } catch {}
+  try { await deleteCombo(id); ElMessage.success('已删除'); fetchCombos() } catch {}
 }
 
 onMounted(() => { fetchSnacks(); fetchCombos(); fetchOrders() })
@@ -847,6 +992,19 @@ onMounted(() => { fetchSnacks(); fetchCombos(); fetchOrders() })
 }
 
 .btn-cancel:hover { background: var(--bg-hover); }
+
+/* ---- Combo Snack Checkboxes ---- */
+.snack-check-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
 
 /* ---- Responsive ---- */
 @media (max-width: 768px) {

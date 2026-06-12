@@ -50,6 +50,8 @@ CALL AddColIfNotExist('hall', 'layout_cfg', 'TEXT');
 CALL AddColIfNotExist('order', 'payment_method', 'VARCHAR(20)');
 CALL AddColIfNotExist('order', 'cashier_id', 'BIGINT');
 CALL AddColIfNotExist('order', 'refund_amount', 'DECIMAL(10,2)');
+CALL AddColIfNotExist('order', 'user_coupon_id', 'BIGINT');
+CALL AddColIfNotExist('order', 'discount_amount', 'DECIMAL(10,2) DEFAULT 0.00');
 
 -- ========== 清理存储过程 ==========
 DROP PROCEDURE IF EXISTS AddColIfNotExist;

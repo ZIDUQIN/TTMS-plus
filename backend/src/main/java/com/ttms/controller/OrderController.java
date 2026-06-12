@@ -9,6 +9,8 @@ import com.ttms.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -47,13 +49,19 @@ public class OrderController {
      * POST /api/user/orders/pay/{orderId}
      *
      * @param orderId 订单ID
+     * @param body    可选参数：userCouponId（使用的优惠券ID）
      * @return 支付后的订单
      */
     @PostMapping("/pay/{orderId}")
-    public ApiResponse<Order> payOrder(@PathVariable Long orderId) {
+    public ApiResponse<Order> payOrder(@PathVariable Long orderId,
+                                        @RequestBody(required = false) Map<String, Object> body) {
         Long userId = getCurrentUserId();
-        log.info("支付订单: userId={}, orderId={}", userId, orderId);
-        Order order = orderService.payOrder(orderId, userId);
+        Long userCouponId = null;
+        if (body != null && body.get("userCouponId") != null) {
+            userCouponId = Long.valueOf(body.get("userCouponId").toString());
+        }
+        log.info("支付订单: userId={}, orderId={}, userCouponId={}", userId, orderId, userCouponId);
+        Order order = orderService.payOrder(orderId, userId, userCouponId);
         log.info("支付成功: orderNo={}", order.getOrderNo());
         return ApiResponse.success("支付成功", order);
     }

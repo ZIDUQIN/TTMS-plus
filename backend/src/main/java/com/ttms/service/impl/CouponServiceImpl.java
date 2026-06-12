@@ -74,8 +74,8 @@ public class CouponServiceImpl {
         if ("FIXED".equalsIgnoreCase(coupon.getType())) {
             return coupon.getValue();
         } else if ("PERCENT".equalsIgnoreCase(coupon.getType())) {
-            // value是折扣率(如0.6=打6折=优惠60%)，折扣金额=订单金额*value
-            return orderAmount.multiply(coupon.getValue()).setScale(2, RoundingMode.HALF_UP);
+            // value是折扣百分比(如60=打4折=优惠60%)，折扣金额=订单金额*(value/100)
+            return orderAmount.multiply(coupon.getValue()).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
         }
         return BigDecimal.ZERO;
     }

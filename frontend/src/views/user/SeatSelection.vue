@@ -117,7 +117,7 @@
     </div>
 
     <!-- Payment Dialog -->
-    <el-dialog v-model="paymentVisible" title="确认支付" width="440px" :close-on-click-modal="false" center>
+    <el-dialog v-model="paymentVisible" title="确认支付" width="560px" :close-on-click-modal="false" center>
       <div class="pay-body">
         <div class="pay-movie">{{ movie?.name }}</div>
         <div class="pay-info">
@@ -125,13 +125,90 @@
           <div class="pay-row"><span>影厅</span><span>{{ schedule?.hallName || '--' }}</span></div>
           <div class="pay-row"><span>座位</span><span>{{ selectedSeats.join('、') }}</span></div>
           <div class="pay-row"><span>数量</span><span>{{ selectedSeats.length }} 张</span></div>
+          <div class="pay-row"><span>原价</span><span>¥{{ totalPrice }}</span></div>
+          <div v-if="selectedCoupon" class="pay-row pay-discount">
+            <span>优惠券抵扣</span><span>-¥{{ couponDiscount.toFixed(2) }}</span>
+          </div>
           <div class="pay-row pay-total"><span>应付</span><span class="pay-price">¥{{ finalPrice }}</span></div>
         </div>
+
+        <!-- Coupon Selection -->
+        <div class="pay-coupon-section" v-if="availableCoupons.length > 0">
+          <div class="pay-coupon-header">
+            <span class="pay-coupon-title">
+              <span class="material-symbols-outlined">confirmation_number</span>
+              选择优惠券
+            </span>
+            <span v-if="selectedCoupon" class="pay-coupon-clear" @click="selectedCoupon = null">取消使用</span>
+          </div>
+          <div class="pay-coupon-scroll">
+            <div
+              v-for="c in availableCoupons"
+              :key="c.id"
+              class="pay-coupon-card"
+              :class="{
+                selected: selectedCoupon?.id === c.id,
+                disabled: parseFloat(totalPrice) < parseFloat(c.minOrderAmount || 0)
+              }"
+              @click="selectCouponCard(c)"
+            >
+              <!-- Left: Value -->
+              <div class="pcc-left" :class="c.type === 'PERCENT' ? 'pcc-velvet' : 'pcc-gold'">
+                <div class="pcc-left-glow"></div>
+                <span class="pcc-tag">{{ c.type === 'PERCENT' ? '折扣' : '立减' }}</span>
+                <template v-if="c.type === 'FIXED' || !c.type">
+                  <div class="pcc-val"><span class="pcc-sym">¥</span>{{ Math.floor(parseFloat(c.value || 0)) }}</div>
+                </template>
+                <template v-else>
+                  <div class="pcc-val">{{ Math.floor(Number(c.value || 0)) }}<span class="pcc-sym">%</span></div>
+                  <div class="pcc-sub">OFF</div>
+                </template>
+              </div>
+              <!-- Perforation -->
+              <div class="pcc-perf"></div>
+              <!-- Cutouts -->
+              <div class="pcc-cut-top"></div>
+              <div class="pcc-cut-bot"></div>
+              <!-- Right: Info -->
+              <div class="pcc-right">
+                <div class="pcc-name">{{ c.name }}</div>
+                <div class="pcc-cond">
+                  <template v-if="parseFloat(c.minOrderAmount || 0) > 0">
+                    <span class="pcc-cond-icon">🎫</span> 满 ¥{{ c.minOrderAmount }} 可用
+                  </template>
+                  <template v-else>
+                    <span class="pcc-cond-icon">🎫</span> 无门槛使用
+                  </template>
+                </div>
+                <div class="pcc-expire">
+                  有效期至 {{ formatCouponExpire(c.expireTime) }}
+                </div>
+                <!-- Discount preview for this coupon -->
+                <div class="pcc-preview">
+                  可省 <strong>¥{{ calcSingleDiscount(c).toFixed(2) }}</strong>
+                </div>
+              </div>
+              <!-- Selected check -->
+              <div v-if="selectedCoupon?.id === c.id" class="pcc-check">
+                <span class="material-symbols-outlined">check_circle</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="pay-coupon-empty" v-else-if="!couponLoading">
+          <span class="material-symbols-outlined">confirmation_number</span>
+          <p>暂无可用优惠券</p>
+          <span class="pay-coupon-empty-hint">去「我的优惠券」领取更多</span>
+        </div>
+
         <div class="pay-method">模拟支付</div>
       </div>
       <template #footer>
         <el-button @click="paymentVisible = false">取消</el-button>
-        <el-button type="primary" :loading="paying" @click="handlePay">确认支付 ¥{{ finalPrice }}</el-button>
+        <el-button type="primary" :loading="paying" @click="handlePay">
+          <template v-if="selectedCoupon">确认支付 ¥{{ finalPrice }}（已省 ¥{{ couponDiscount.toFixed(2) }}）</template>
+          <template v-else>确认支付 ¥{{ finalPrice }}</template>
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -152,7 +229,7 @@ const seatStatusMap = ref({})
 const selectedSeats = ref([]); const pageLoading = ref(true); const seatLoading = ref(true)
 const submitting = ref(false); const paying = ref(false)
 const paymentVisible = ref(false); const currentOrderId = ref(null)
-const availableCoupons = ref([]); const selectedCoupon = ref(null); const showCouponPicker = ref(false)
+const availableCoupons = ref([]); const selectedCoupon = ref(null); const couponLoading = ref(false)
 
 const defaultPoster = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="160"><rect fill="#1a1a2e" width="120" height="160"/><text fill="#7a8096" font-family="Arial" font-size="10" text-anchor="middle" x="60" y="85">暂无</text></svg>')
 function onImgError(e) { e.target.src = defaultPoster }
@@ -167,9 +244,29 @@ const couponDiscount = computed(() => {
   if (!selectedCoupon.value) return 0
   const v = parseFloat(selectedCoupon.value.value || 0)
   const t = parseFloat(totalPrice.value)
-  return selectedCoupon.value.type === 'FIXED' ? Math.min(v, t) : parseFloat((t * v).toFixed(2))
+  if (selectedCoupon.value.type === 'FIXED') {
+    return Math.min(v, t)
+  }
+  return parseFloat((t * v / 100).toFixed(2))
 })
 const finalPrice = computed(() => Math.max(0, parseFloat(totalPrice.value) - couponDiscount.value).toFixed(2))
+
+// Helpers for coupon card UI
+function calcSingleDiscount(c) {
+  const v = parseFloat(c.value || 0)
+  const t = parseFloat(totalPrice.value)
+  if (!c.type || c.type === 'FIXED') return Math.min(v, t)
+  return parseFloat((t * v / 100).toFixed(2))
+}
+function selectCouponCard(c) {
+  const min = parseFloat(c.minOrderAmount || 0)
+  if (parseFloat(totalPrice.value) < min) return
+  selectedCoupon.value = selectedCoupon.value?.id === c.id ? null : c
+}
+function formatCouponExpire(t) {
+  if (!t) return '--'
+  return t.substring(0, 10).replace(/-/g, '.')
+}
 
 function seatKey(r, c) { return `${String.fromCharCode(64 + r)}-${String(c).padStart(2, '0')}` }
 function isSold(r, c) { return seatStatusMap.value[seatKey(r, c)] === 'OCCUPIED' }
@@ -227,13 +324,15 @@ async function fetchScheduleDetail() {
 }
 
 async function loadCoupons() {
+  couponLoading.value = true
   try {
     const r = await getMyCoupons(); const now = new Date()
     availableCoupons.value = (r.data || []).filter(c => c.status === 0 && (!c.expireTime || new Date(c.expireTime) >= now))
   } catch { availableCoupons.value = [] }
+  finally { couponLoading.value = false }
 }
 
-watch(paymentVisible, v => { if (v) { selectedCoupon.value = null; showCouponPicker.value = false; loadCoupons() } })
+watch(paymentVisible, v => { if (v) { selectedCoupon.value = null; loadCoupons() } })
 
 async function handleConfirm() {
   if (!selectedSeats.value.length || submitting.value) return
@@ -249,10 +348,12 @@ async function handleConfirm() {
 async function handlePay() {
   if (!currentOrderId.value) return; paying.value = true
   try {
-    await payOrder(currentOrderId.value)
-    if (selectedCoupon.value) { try { const { useCoupon } = await import('@/api/coupon'); await useCoupon(selectedCoupon.value.id, currentOrderId.value) } catch {} }
+    const userCouponId = selectedCoupon.value?.id || null
+    await payOrder(currentOrderId.value, userCouponId)
     paymentVisible.value = false; ElMessage.success('支付成功'); router.push('/my-orders')
-  } catch {}
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '支付失败，请重试')
+  }
   paying.value = false
 }
 
@@ -349,6 +450,118 @@ onMounted(fetchScheduleDetail)
 .pay-total { border-top: 1px dashed var(--border-color); margin-top: 4px; padding-top: 8px; font-weight: 700; color: var(--text-primary); }
 .pay-price { color: var(--color-primary); font-size: 18px; }
 .pay-method { text-align: center; padding: 12px; border: 2px solid var(--color-primary); border-radius: 8px; color: var(--color-primary); font-size: 14px; font-weight: 600; background: rgba(232,168,80,0.05); }
+
+.pay-discount span:last-child { color: #22c55e; font-weight: 600; }
+
+/* ============================================================
+   Coupon Picker — Card Style
+   ============================================================ */
+.pay-coupon-section { margin: 12px 0; }
+
+.pay-coupon-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.pay-coupon-title {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+}
+.pay-coupon-title .material-symbols-outlined { font-size: 18px; color: var(--color-primary); }
+.pay-coupon-clear { font-size: 12px; color: var(--color-primary); cursor: pointer; }
+.pay-coupon-clear:hover { text-decoration: underline; }
+
+.pay-coupon-scroll {
+  max-height: 280px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 10px;
+  padding-right: 4px;
+}
+.pay-coupon-scroll::-webkit-scrollbar { width: 4px; }
+.pay-coupon-scroll::-webkit-scrollbar-thumb { background: rgba(232,168,80,0.2); border-radius: 2px; }
+
+/* ---- Coupon Card ---- */
+.pay-coupon-card {
+  position: relative; display: flex; height: 100px;
+  border-radius: 10px; overflow: hidden;
+  background: var(--bg-card); border: 1px solid var(--border-light);
+  cursor: pointer; transition: all 0.25s ease;
+}
+.pay-coupon-card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+.pay-coupon-card.selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(232,168,80,0.25), 0 4px 20px rgba(232,168,80,0.15);
+}
+.pay-coupon-card.disabled {
+  opacity: 0.45; cursor: not-allowed; filter: grayscale(0.3);
+}
+.pay-coupon-card.disabled:hover { transform: none; box-shadow: none; }
+
+/* Left side */
+.pcc-left {
+  width: 42%; flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+.pcc-left.pcc-gold { background: linear-gradient(135deg, #e8a850 0%, #a6732e 100%); color: #2a1800; }
+.pcc-left.pcc-velvet { background: linear-gradient(135deg, #89182a 0%, #40000b 100%); color: #ffc0c1; }
+.pcc-left-glow {
+  position: absolute; top: -20px; left: -20px;
+  width: 60px; height: 60px; background: rgba(255,255,255,0.08); border-radius: 50%;
+}
+.pcc-tag {
+  font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700;
+  letter-spacing: 0.08em; opacity: 0.8; margin-bottom: 2px;
+}
+.pcc-val { font-size: 32px; font-weight: 800; line-height: 1; display: flex; align-items: baseline; }
+.pcc-sym { font-size: 14px; font-weight: 700; margin-right: 1px; }
+.pcc-sub { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; margin-top: 2px; opacity: 0.7; }
+
+/* Perforation line */
+.pcc-perf {
+  width: 1px;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(128,128,128,0.2) 0px,
+    rgba(128,128,128,0.2) 5px,
+    transparent 5px,
+    transparent 10px
+  );
+}
+/* Cutout circles */
+.pcc-cut-top, .pcc-cut-bot {
+  position: absolute; left: 42%; top: -6px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--bg-primary); z-index: 1; transform: translateX(-50%);
+}
+.pcc-cut-bot { top: auto; bottom: -6px; }
+
+/* Right side */
+.pcc-right {
+  flex: 1; padding: 12px 14px;
+  display: flex; flex-direction: column; justify-content: center;
+  min-width: 0;
+}
+.pcc-name { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 3px; }
+.pcc-cond { font-size: 11px; color: var(--text-tertiary); margin-bottom: 2px; }
+.pcc-cond-icon { font-size: 10px; }
+.pcc-expire { font-size: 10px; color: var(--text-tertiary); opacity: 0.7; margin-bottom: 4px; }
+.pcc-preview { font-size: 12px; color: var(--color-primary); }
+.pcc-preview strong { font-size: 15px; font-weight: 700; }
+
+/* Selected checkmark */
+.pcc-check {
+  position: absolute; top: 6px; right: 6px;
+  width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+}
+.pcc-check .material-symbols-outlined { font-size: 22px; color: var(--color-primary); }
+
+/* Empty state */
+.pay-coupon-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 24px; color: var(--text-tertiary);
+}
+.pay-coupon-empty .material-symbols-outlined { font-size: 40px; opacity: 0.4; }
+.pay-coupon-empty p { font-size: 13px; }
+.pay-coupon-empty-hint { font-size: 11px; opacity: 0.6; }
 
 /* Light Mode Overrides */
 [data-theme='light'] .seat-page { background: #fff8f4; }

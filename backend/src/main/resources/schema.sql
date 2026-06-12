@@ -133,6 +133,8 @@ CREATE TABLE IF NOT EXISTS `order` (
     `refund_amount` DECIMAL(10,2),
     `original_order_id` BIGINT,
     `reschedule_time` DATETIME,
+    `user_coupon_id` BIGINT COMMENT '使用的优惠券ID',
+    `discount_amount` DECIMAL(10,2) DEFAULT 0.00 COMMENT '优惠券抵扣金额',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_order_user` (`user_id`),

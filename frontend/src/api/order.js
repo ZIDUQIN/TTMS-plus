@@ -11,11 +11,12 @@ export function createOrder(data) {
   })
 }
 
-// Pay order
-export function payOrder(orderId) {
+// Pay order (optional userCouponId for coupon discount)
+export function payOrder(orderId, userCouponId = null) {
   return request({
     url: `/user/orders/pay/${orderId}`,
-    method: 'post'
+    method: 'post',
+    data: userCouponId ? { userCouponId } : {}
   })
 }
 

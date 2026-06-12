@@ -60,6 +60,12 @@ public class Order {
     /** 改签/退票时间 */
     private LocalDateTime rescheduleTime;
 
+    /** 使用的用户优惠券ID */
+    private Long userCouponId;
+
+    /** 优惠券抵扣金额 */
+    private java.math.BigDecimal discountAmount;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

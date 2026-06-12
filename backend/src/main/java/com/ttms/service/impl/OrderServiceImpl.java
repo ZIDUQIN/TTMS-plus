@@ -44,6 +44,7 @@ public class OrderServiceImpl implements OrderService {
     private final SystemConfigMapper systemConfigMapper;
     private final MemberServiceImpl memberService;
     private final PricingServiceImpl pricingService;
+    private final CouponServiceImpl couponService;
 
     /** 随机字符集，用于生成订单号的随机部分 */
     private static final String RANDOM_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -175,7 +176,7 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional
-    public Order payOrder(Long orderId, Long userId) {
+    public Order payOrder(Long orderId, Long userId, Long userCouponId) {
         Order order = orderMapper.selectById(orderId);
         if (order == null) {
             throw new BusinessException("订单不存在");
@@ -205,6 +206,18 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException("场次已开始放映，无法支付");
         }
 
+        // B16: 应用优惠券折扣
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        if (userCouponId != null) {
+            try {
+                discountAmount = couponService.calculateDiscount(userCouponId, order.getTotalPrice());
+                couponService.useCoupon(userCouponId, order.getId());
+                log.info("优惠券抵扣: userCouponId={}, discount={}, orderNo={}", userCouponId, discountAmount, order.getOrderNo());
+            } catch (Exception e) {
+                throw new BusinessException("优惠券使用失败: " + e.getMessage());
+            }
+        }
+
         // 将关联的座位标记为已售出
         if (order.getSeatNumbers() == null || order.getSeatNumbers().isEmpty()) {
             throw new BusinessException("订单座位信息异常，无法支付");
@@ -217,15 +230,19 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        // 处理余额支付
+        // 处理余额支付（使用折扣后的实际金额）
+        BigDecimal actualPayAmount = order.getTotalPrice().subtract(discountAmount);
         if ("BALANCE".equals(order.getPaymentMethod())) {
-            memberService.payWithBalance(userId, order.getTotalPrice());
-            log.info("余额支付: userId={}, amount={}", userId, order.getTotalPrice());
+            memberService.payWithBalance(userId, actualPayAmount);
+            log.info("余额支付: userId={}, amount={}, discount={}", userId, actualPayAmount, discountAmount);
         }
 
-        // 更新订单状态
+        // 更新订单状态和优惠券信息
         order.setStatus(1);  // 待观影
         order.setPayTime(LocalDateTime.now());
+        order.setUserCouponId(userCouponId);
+        order.setDiscountAmount(discountAmount);
+        order.setTotalPrice(actualPayAmount);  // 更新为实际支付金额
         orderMapper.updateById(order);
 
         // 记录操作日志

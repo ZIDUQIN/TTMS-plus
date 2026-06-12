@@ -25,11 +25,12 @@ public interface OrderService {
      * 支付订单
      * 将订单状态改为待观影，座位标记为已售出
      *
-     * @param orderId 订单ID
-     * @param userId  支付用户ID（用于权限校验）
+     * @param orderId      订单ID
+     * @param userId       支付用户ID（用于权限校验）
+     * @param userCouponId 使用的优惠券ID（可选，null表示不使用）
      * @return 支付后的订单
      */
-    Order payOrder(Long orderId, Long userId);
+    Order payOrder(Long orderId, Long userId, Long userCouponId);
 
     /**
      * 改签
