@@ -20,21 +20,22 @@ REMOTE_DIR="${REMOTE_DIR:-/data/ttms}"
 APP_PORT="${APP_PORT:-8080}"
 
 if [ -z "$ECS_HOST" ]; then
-    echo "用法: ./deploy.sh <ECS公网IP> [SSH用户] [SSH端口]"
+    echo "用法: ./deploy.sh <ECS公网IP> [SSH用户] [SSH端口] [MySQL密码]"
     echo ""
     echo "示例:"
-    echo "  ./deploy.sh 124.70.xxx.xxx                    # 默认 root:22"
-    echo "  ./deploy.sh 124.70.xxx.xxx root 22            # 完整参数"
-    echo ""
-    echo "环境变量（可选）:"
-    echo "  REMOTE_DIR     ECS上的部署目录，默认 /data/ttms"
-    echo "  APP_PORT       应用端口，默认 8080"
+    echo "  ./deploy.sh 124.70.xxx.xxx root 22 Root@123456"
     echo ""
     echo "前置条件:"
     echo "  1. 本地安装 JDK17+ 和 Maven 3.9+"
     echo "  2. ECS 安装 JDK17+ 和 MySQL 8.0+"
-    echo "  3. ECS 已创建 TTMS 数据库并执行 schema.sql"
+    echo "  3. ECS 已创建 TTMS 数据库"
     exit 1
+fi
+
+DB_PWD="${4:-}"
+if [ -z "$DB_PWD" ]; then
+    read -sp "请输入华为云 MySQL root 密码: " DB_PWD
+    echo ""
 fi
 
 SSH_OPTS="-o ConnectTimeout=10 -o StrictHostKeyChecking=no -p ${SSH_PORT}"
@@ -82,12 +83,21 @@ ssh ${SSH_OPTS} "${SSH_USER}@${ECS_HOST}" "
     fi
 "
 
-# 上传 JAR（前端已打包在 JAR 内）
-log "  上传 JAR..."
+# 上传 JAR 和迁移脚本
+log "  上传文件..."
 scp -P ${SSH_PORT} backend/target/ttms-*.jar "${SSH_USER}@${ECS_HOST}:${REMOTE_DIR}/bin/app.jar"
+scp -P ${SSH_PORT} backend/src/main/resources/migration.sql "${SSH_USER}@${ECS_HOST}:${REMOTE_DIR}/config/"
+scp -P ${SSH_PORT} backend/src/main/resources/schema.sql "${SSH_USER}@${ECS_HOST}:${REMOTE_DIR}/config/"
 
-# ---- 5. 配置并启动 ----
-log "Step 5/5: 配置环境变量并启动..."
+# ---- 6. 数据库迁移（安全添加缺失列）----
+log "Step 6/7: 执行数据库迁移..."
+ssh ${SSH_OPTS} "${SSH_USER}@${ECS_HOST}" "
+    echo '执行 migration.sql...'
+    mysql -u root -p'${DB_PWD}' TTMS < ${REMOTE_DIR}/config/migration.sql 2>&1
+    echo '迁移完成'
+"
+
+log "Step 7/7: 配置环境变量并启动..."
 
 # 生成启动脚本
 ssh ${SSH_OPTS} "${SSH_USER}@${ECS_HOST}" "cat > ${REMOTE_DIR}/bin/start.sh << 'SCRIPT'
@@ -98,7 +108,7 @@ cd ${REMOTE_DIR}
 export SERVER_PORT=${APP_PORT}
 export DB_URL=jdbc:mysql://localhost:3306/TTMS?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
 export DB_USERNAME=root
-export DB_PASSWORD=Root@123456
+export DB_PASSWORD=__DB_PASSWORD__
 export JWT_SECRET=TTMS2024ProductionSecretKeyAtLeast32CharsChangeMe!
 export JWT_EXPIRATION=86400000
 export ADMIN_USERNAME=admin
@@ -120,7 +130,9 @@ echo \$! > ${REMOTE_DIR}/bin/app.pid
 echo \"TTMS 已启动，PID=\$(cat ${REMOTE_DIR}/bin/app.pid)\"
 echo \"日志: tail -f ${REMOTE_DIR}/logs/app.log\"
 SCRIPT
-chmod +x ${REMOTE_DIR}/bin/start.sh"
+chmod +x ${REMOTE_DIR}/bin/start.sh
+# 替换数据库密码
+sed -i 's/__DB_PASSWORD__/${DB_PWD}/' ${REMOTE_DIR}/bin/start.sh"
 
 # 执行启动
 ssh ${SSH_OPTS} "${SSH_USER}@${ECS_HOST}" "bash ${REMOTE_DIR}/bin/start.sh"
